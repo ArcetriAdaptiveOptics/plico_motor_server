@@ -79,15 +79,21 @@ class MotorController(Stepable,
         with self._mutexStatus:
             self._motorStatus = None
 
-    def move_by(self):
-        pass
+    @logEnterAndExit('Entering move_by', 'move_by executed')
+    def move_by(self, delta_position_in_steps):
+        curpos = self._motor.position()
+        self._motor.move_to(curpos + delta_position_in_steps)
+        with self._mutexStatus:
+            self._motorStatus = None
 
-    def _getPosition(self):
-        return self._getMotorStatus().positionInSteps
+# Not used?
+#    def position(self):
+#        return self._motor.position()
 
     @synchronized("_mutexStatus")
     def _getMotorStatus(self):
-        if self._motorStatus is None:
+#       if self._motorStatus is None:
+        if True:
             self._logger.debug('get MotorStatus')
             self._motorStatus = MotorStatus(
                 self._motor.name(),

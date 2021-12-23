@@ -62,17 +62,11 @@ class Picomotor(AbstractMotor):
         return await asyncio.wait_for(future, self.timeout)
 
     @_reconnect
-    async def _moveby(self, steps, block=True):
+    async def _moveby(self, steps):
 
         if self.verbose:
             print('Moving by %d steps', steps)
-
         self.motor.set_relative(self.axis, steps)
-        if block:
-            if self.verbose:
-                print('Waiting for completion')
-            while await self._timeout(self.motor.done(self.axis)):
-                await asyncio.sleep(self.poll_interval)
 
     @_reconnect
     async def _pos(self):
@@ -91,10 +85,10 @@ class Picomotor(AbstractMotor):
         return self.loop.run_until_complete(self._pos())
 
     @override
-    def move_to(self, position_in_steps, block=True):
+    def move_to(self, position_in_steps):
         delta = position_in_steps - self.position()
         self._last_commanded_position = position_in_steps,
-        return self.loop.run_until_complete(self._moveby(delta, block))
+        return self.loop.run_until_complete(self._moveby(delta))
 
     @override
     def stop(self):
