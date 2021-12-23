@@ -4,6 +4,8 @@ from newfocus8742 import tcp
 from plico.utils.logger import Logger
 from plico.utils.decorator import override
 from plico_motor_server.devices.abstract_motor import AbstractMotor
+from plico_motor.types import MotorStatus
+
 
 
 class PicomotorException(Exception):
@@ -44,6 +46,7 @@ class PicoMotor(AbstractMotor):
         self._has_been_homed = False
         self.loop = asyncio.get_event_loop()
         self.verbose = verbose
+        self._last_commanded_position = 0
 
     async def _connect(self):
         if self.verbose:
@@ -88,6 +91,7 @@ class PicoMotor(AbstractMotor):
     @override
     def move_to(self, position_in_steps, block=True):
         delta = position_in_steps - self.position()
+        self._last_commanded_position = position_in_steps,
         return self.loop.run_until_complete(self._moveby(delta, block))
 
     @override
@@ -98,3 +102,22 @@ class PicoMotor(AbstractMotor):
     def deinitialize(self):
         raise PicomotorException('Deinitialize command is not supported')
 
+    @override
+    def steps_per_SI_unit(self):
+        return 1.0 / 20e-9  #  20 nanometers/step (TBC)
+
+    @override
+    def was_homed(self):
+        return True
+
+    @override
+    def type(self):
+        return MotorStatus.TYPE_LINEAR
+
+    @override
+    def is_moving(self):
+        return False   # TBD
+
+    @override
+    def last_commanded_position(self):
+        return self._last_commanded_position

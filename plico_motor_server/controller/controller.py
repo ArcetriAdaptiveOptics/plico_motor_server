@@ -8,6 +8,7 @@ from plico.utils.serverinfoable import ServerInfoable
 from plico.utils.logger import Logger
 from plico.utils.decorator import override, logEnterAndExit, synchronized
 from plico.utils.timekeeper import TimeKeeper
+from plico_motor.utils import MotorStatus
 
 
 class MotorController(Stepable,
@@ -81,42 +82,25 @@ class MotorController(Stepable,
     def move_by(self):
         pass
 
-    def setExposureTime(self, exposureTimeInMilliSeconds):
-        self._motor.setExposureTime(exposureTimeInMilliSeconds)
-        with self._mutexStatus:
-            self._cameraStatus = None
-
-    def _getExposureTime(self):
-        return self._getCameraStatus().exposureTimeInMilliSec
-
-    @logEnterAndExit('Entering setBinning',
-                     'Executed setBinning')
-    def setBinning(self, binning):
-        self._motor.setBinning(binning)
-        with self._mutexStatus:
-            self._cameraStatus = None
-
-    def getBinning(self):
-        assert False, 'Should not be used, client uses getStatus instead'
-
-    def getSnapshot(self, prefix):
-        assert False, 'Should not be used, client uses status instead'
+    def _getPosition(self):
+        return self._getMotorStatus().positionInSteps
 
     @synchronized("_mutexStatus")
-    def _getCameraStatus(self):
-        if self._cameraStatus is None:
-            self._logger.debug('get CameraStatus')
-            self._cameraStatus = CameraStatus(
+    def _getMotorStatus(self):
+        if self._motorStatus is None:
+            self._logger.debug('get MotorStatus')
+            self._motorStatus = MotorStatus(
                 self._motor.name(),
-                self._motor.cols(),
-                self._motor.rows(),
-                self._motor.dtype(),
-                self._motor.getBinning(),
-                self._motor.exposureTime(),
-                self._motor.getFrameRate())
-        return self._cameraStatus
+                self._motor.position(),
+                self._motor.steps_per_SI_unit(),
+                self._motor.was_homed(),
+                self._motor.type(),
+                self._motor.is_moving(),
+                self._motor.last_commanded_position())
+                
+        return self._motorStatus
 
     def _publishStatus(self):
         self._rpcHandler.publishPickable(self._statusSocket,
-                                         self._getCameraStatus())
+                                         self._getMotorStatus())
 

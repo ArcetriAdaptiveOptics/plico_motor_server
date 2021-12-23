@@ -1,6 +1,7 @@
 from plico.utils.decorator import override
 from plico.utils.logger import Logger
 from plico_motor_server.devices.abstract_motor import AbstractMotor
+from plico_motor.types import MotorStatus
 
 
 class SimulatedMotor(AbstractMotor):
@@ -49,3 +50,24 @@ class SimulatedMotor(AbstractMotor):
             raise Exception('Asked to fail on deinitialize')
         else:
             pass
+
+    @override
+    def steps_per_SI_unit(self):
+        return 1
+
+    @override
+    def was_homed(self):
+        return self._hase_been_homed
+
+    @override
+    def type(self):
+        return MotorStatus.TYPE_LINEAR
+
+    @override
+    def is_moving(self):
+        return False
+
+    @override
+    def last_commanded_position(self):
+        return self._position_in_steps
+
