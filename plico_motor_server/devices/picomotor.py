@@ -37,11 +37,13 @@ class Picomotor(AbstractMotor):
     '''
 
     def __init__(self, ipaddr, axis=1, timeout=2, name='Picomotor', verbose=False):
-        self.name = name
+        self._name = name
         self.ipaddr = ipaddr
         self.timeout = timeout
+        self.connected = False
         self.logger = Logger.of('Picomotor')
-        self.is_moving = False
+        self.axis = axis
+
         self._actual_position_in_steps = 0
         self._has_been_homed = False
         self.loop = asyncio.get_event_loop()

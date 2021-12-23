@@ -75,7 +75,6 @@ class Runner(BaseRunner):
             self._replySocket,
             self._publishSocket,
             self._statusSocket,
-            self._displaySocket,
             self.rpc())
 
     def _runLoop(self):
