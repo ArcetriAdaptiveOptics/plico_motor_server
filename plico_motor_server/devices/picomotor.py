@@ -4,7 +4,7 @@ from newfocus8742 import tcp
 from plico.utils.logger import Logger
 from plico.utils.decorator import override
 from plico_motor_server.devices.abstract_motor import AbstractMotor
-from plico_motor.types import MotorStatus
+from plico_motor.types.motor_status import MotorStatus
 
 
 
@@ -31,7 +31,7 @@ def _reconnect(f):
     return func
 
 
-class PicoMotor(AbstractMotor):
+class Picomotor(AbstractMotor):
     '''Picomotor class.
        Hides the asyncio event loop, exposing synchronous methods
     '''

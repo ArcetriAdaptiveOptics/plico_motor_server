@@ -1,7 +1,7 @@
 from plico.utils.decorator import override
 from plico.utils.logger import Logger
 from plico_motor_server.devices.abstract_motor import AbstractMotor
-from plico_motor.types import MotorStatus
+from plico_motor.types.motor_status import MotorStatus
 
 
 class SimulatedMotor(AbstractMotor):

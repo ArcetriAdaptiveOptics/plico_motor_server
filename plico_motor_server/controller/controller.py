@@ -8,7 +8,7 @@ from plico.utils.serverinfoable import ServerInfoable
 from plico.utils.logger import Logger
 from plico.utils.decorator import override, logEnterAndExit, synchronized
 from plico.utils.timekeeper import TimeKeeper
-from plico_motor.utils import MotorStatus
+from plico_motor.types.motor_status import MotorStatus
 
 
 class MotorController(Stepable,
@@ -103,4 +103,7 @@ class MotorController(Stepable,
     def _publishStatus(self):
         self._rpcHandler.publishPickable(self._statusSocket,
                                          self._getMotorStatus())
+
+    def getSnapshot(self, prefix):
+        assert False, 'Should not be used, client uses getStatus instead'
 

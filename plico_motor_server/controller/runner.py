@@ -35,11 +35,6 @@ class Runner(BaseRunner):
 
     def _createPicomotor(self, motorDeviceSection):
         motorName = self.configuration.deviceName(motorDeviceSection)
-        self._motor = Picomotor(motorName)
-
-    def _createPicomotor(self, motorDeviceSection):
-        from plico_motor_server.devices.picomotor import Picomotor
-        motorName = self.configuration.deviceName(motorDeviceSection)
         ipAddress = self.configuration.getValue(motorDeviceSection,
                                                 'ip_address')
         axis = self.configuration.getValue(
