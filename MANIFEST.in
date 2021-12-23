@@ -1,0 +1,4 @@
+include README.md LICENSE
+recursive-include test *
+recursive-include plico_motor_server/conf *
+recursive-include plico_motor_server/calib *
