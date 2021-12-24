@@ -57,7 +57,7 @@ class SimulatedMotor(AbstractMotor):
 
     @override
     def was_homed(self):
-        return self._hase_been_homed
+        return self._has_been_homed
 
     @override
     def type(self):

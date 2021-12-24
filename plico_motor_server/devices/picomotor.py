@@ -7,7 +7,6 @@ from plico_motor_server.devices.abstract_motor import AbstractMotor
 from plico_motor.types.motor_status import MotorStatus
 
 
-
 class PicomotorException(Exception):
     pass
 
@@ -20,6 +19,7 @@ def _reconnect(f):
 
     Any communication problem will raise a PicomotorException
     '''
+
     async def func(self, *args, **kwargs):
         try:
             if not self.connected:
@@ -28,6 +28,7 @@ def _reconnect(f):
         except (asyncio.TimeoutError, OSError):
             self.connected = False
             raise PicomotorException
+
     return func
 
 
@@ -112,7 +113,7 @@ class Picomotor(AbstractMotor):
 
     @override
     def is_moving(self):
-        return False   # TBD
+        return False  # TBD
 
     @override
     def last_commanded_position(self):

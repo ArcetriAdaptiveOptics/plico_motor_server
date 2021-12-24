@@ -39,8 +39,6 @@ class MotorController(Stepable,
         self._isTerminated = False
         self._stepCounter = 0
         self._timekeep = TimeKeeper()
-        self._motorStatus = None
-        self._mutexStatus = threading.RLock()
 
     @override
     def step(self):
@@ -76,35 +74,27 @@ class MotorController(Stepable,
     @logEnterAndExit('Entering move_to', 'move_to executed')
     def move_to(self, position_in_steps):
         self._motor.move_to(position_in_steps)
-        with self._mutexStatus:
-            self._motorStatus = None
 
     @logEnterAndExit('Entering move_by', 'move_by executed')
     def move_by(self, delta_position_in_steps):
         curpos = self._motor.position()
         self._motor.move_to(curpos + delta_position_in_steps)
-        with self._mutexStatus:
-            self._motorStatus = None
 
 # Not used?
 #    def position(self):
 #        return self._motor.position()
 
-    @synchronized("_mutexStatus")
     def _getMotorStatus(self):
-#       if self._motorStatus is None:
-        if True:
-            self._logger.debug('get MotorStatus')
-            self._motorStatus = MotorStatus(
-                self._motor.name(),
-                self._motor.position(),
-                self._motor.steps_per_SI_unit(),
-                self._motor.was_homed(),
-                self._motor.type(),
-                self._motor.is_moving(),
-                self._motor.last_commanded_position())
-                
-        return self._motorStatus
+        self._logger.debug('get MotorStatus')
+        motorStatus = MotorStatus(
+            self._motor.name(),
+            self._motor.position(),
+            self._motor.steps_per_SI_unit(),
+            self._motor.was_homed(),
+            self._motor.type(),
+            self._motor.is_moving(),
+            self._motor.last_commanded_position())
+        return motorStatus
 
     def _publishStatus(self):
         self._rpcHandler.publishPickable(self._statusSocket,
