@@ -1,12 +1,10 @@
-import threading
 import time
-import numpy as np
 from plico.utils.hackerable import Hackerable
 from plico.utils.snapshotable import Snapshotable
 from plico.utils.stepable import Stepable
 from plico.utils.serverinfoable import ServerInfoable
 from plico.utils.logger import Logger
-from plico.utils.decorator import override, logEnterAndExit, synchronized
+from plico.utils.decorator import override, logEnterAndExit
 from plico.utils.timekeeper import TimeKeeper
 from plico_motor.types.motor_status import MotorStatus
 
@@ -69,11 +67,11 @@ class MotorController(Stepable,
     @logEnterAndExit('Entering home', 'Homing executed')
     def home(self):
         self._motor.home()
-        pass
 
     @logEnterAndExit('Entering move_to', 'move_to executed')
     def move_to(self, position_in_steps):
         self._motor.move_to(position_in_steps)
+        self._logger.notice("moved to %g" % position_in_steps)
 
     @logEnterAndExit('Entering move_by', 'move_by executed')
     def move_by(self, delta_position_in_steps):
