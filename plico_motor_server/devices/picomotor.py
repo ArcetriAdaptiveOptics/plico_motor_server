@@ -33,8 +33,10 @@ def _reconnect(f):
 
 
 class Picomotor(AbstractMotor):
-    '''Picomotor class.
-       Hides the asyncio event loop, exposing synchronous methods
+    '''
+    Picomotor piezo actuator controlled via a Newport controller 8742
+    with tcp connection.
+    Hides the asyncio event loop, exposing synchronous methods
     '''
 
     def __init__(self, ipaddr, axis=1, timeout=2, name='Picomotor', verbose=False):

@@ -63,8 +63,6 @@ class Runner(BaseRunner):
             self._zmqPorts.SERVER_PUBLISHER_PORT, hwm=100)
         self._statusSocket = self.rpc().publisherSocket(
             self._zmqPorts.SERVER_STATUS_PORT, hwm=1)
-        self._displaySocket = self.rpc().publisherSocket(
-            self._zmqPorts.SERVER_DISPLAY_PORT, hwm=1)
 
         self._createMotorDevice()
 

@@ -93,6 +93,8 @@ setup(name=NAME,
                         "plico_motor",
                         "numpy",
                         "psutil",
+                        "sipyco @ git+https://github.com/m-labs/sipyco.git",
+                        "newfocus8742 @ git+https://github.com/quartiq/newfocus8742.git"
                         ],
       include_package_data=True,
       test_suite='test',
