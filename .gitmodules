@@ -1,6 +1,0 @@
-[submodule "externals/sipyco"]
-	path = externals/sipyco
-	url = git://github.com/m-labs/sipyco.git
-[submodule "externals/newfocus8742"]
-	path = externals/newfocus8742
-	url = git://github.com/quartiq/newfocus8742.git
