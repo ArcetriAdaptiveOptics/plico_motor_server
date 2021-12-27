@@ -1,5 +1,5 @@
-#!/usr/bin/env python
 import os
+import sys
 import subprocess
 import shutil
 import unittest
@@ -21,6 +21,8 @@ from plico_motor.client.snapshot_entry import SnapshotEntry
 from plico_motor_server.controller.runner import Runner
 
 
+@unittest.skipIf(sys.platform == "win32",
+                 "Integration test doesn't run on Windows. Fix it!")
 class IntegrationTest(unittest.TestCase):
 
     TEST_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)),
