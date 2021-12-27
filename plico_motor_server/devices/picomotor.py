@@ -25,9 +25,9 @@ def _reconnect(f):
             if not self.connected:
                 await self._connect()
             return await f(self, *args, **kwargs)
-        except (asyncio.TimeoutError, OSError):
+        except (asyncio.TimeoutError, OSError) as ex:
             self.connected = False
-            raise PicomotorException
+            raise ex
 
     return func
 
@@ -39,9 +39,16 @@ class Picomotor(AbstractMotor):
     Hides the asyncio event loop, exposing synchronous methods
     '''
 
-    def __init__(self, ipaddr, axis=1, timeout=2, name='Picomotor', verbose=False):
+    def __init__(self,
+                 ipaddr,
+                 axis=1,
+                 timeout=2,
+                 name='Picomotor',
+                 port=30023,
+                 verbose=False):
         self._name = name
         self.ipaddr = ipaddr
+        self.port = port
         self.timeout = timeout
         self.connected = False
         self.logger = Logger.of('Picomotor')
@@ -56,7 +63,7 @@ class Picomotor(AbstractMotor):
     async def _connect(self):
         if self.verbose:
             print('Connecting to picomotor at', self.ipaddr)
-        future = tcp.NewFocus8742TCP.connect(self.ipaddr)
+        future = tcp.NewFocus8742TCP.connect(self.ipaddr, port=self.port)
         self.motor = await asyncio.wait_for(future, self.timeout)
         self.connected = True
 
