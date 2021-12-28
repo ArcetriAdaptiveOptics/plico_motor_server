@@ -65,18 +65,18 @@ class MotorController(Stepable,
         return self._isTerminated
 
     @logEnterAndExit('Entering home', 'Homing executed')
-    def home(self):
-        self._motor.home()
+    def home(self, axis=1):
+        self._motor.home(axis)
 
     @logEnterAndExit('Entering move_to', 'move_to executed')
-    def move_to(self, position_in_steps):
-        self._motor.move_to(position_in_steps)
-        self._logger.notice("moved to %g" % position_in_steps)
+    def move_to(self, axis=1, position_in_steps):
+        self._motor.move_to(axis, position_in_steps)
+        self._logger.notice("moved axis %d to %g" % (axis, position_in_steps))
 
     @logEnterAndExit('Entering move_by', 'move_by executed')
-    def move_by(self, delta_position_in_steps):
-        curpos = self._motor.position()
-        self._motor.move_to(curpos + delta_position_in_steps)
+    def move_by(self, axis=1, delta_position_in_steps):
+        curpos = self._motor.position(axis)
+        self._motor.move_to(axis, curpos + delta_position_in_steps)
 
 # Not used?
 #    def position(self):
@@ -84,15 +84,19 @@ class MotorController(Stepable,
 
     def _getMotorStatus(self):
         self._logger.debug('get MotorStatus')
-        motorStatus = MotorStatus(
-            self._motor.name(),
-            self._motor.position(),
-            self._motor.steps_per_SI_unit(),
-            self._motor.was_homed(),
-            self._motor.type(),
-            self._motor.is_moving(),
-            self._motor.last_commanded_position())
-        return motorStatus
+        axisStatus = []
+        for i in range(self._motor.naxis):
+            axis = i+1
+            motorStatus = MotorStatus(
+                self._motor.name(),
+                self._motor.position(axis),
+                self._motor.steps_per_SI_unit(axis),
+                self._motor.was_homed(axis),
+                self._motor.type(axis),
+                self._motor.is_moving(axis),
+                self._motor.last_commanded_positionaxis())
+            axisStatus.append(motorStatus)
+        return axisStatus
 
     def _publishStatus(self):
         self._rpcHandler.publishPickable(self._statusSocket,

@@ -45,7 +45,7 @@ def _reconnect(f):
             if not self._sock:
                 self._connect()
             return f(self, *args, **kwargs)
-        except socket.timeout:
+        except (socket.timeout, OSError):
             self._sock = None
             raise PicomotorException
     return func
@@ -58,7 +58,7 @@ class Picomotor(AbstractMotor):
     def __init__(self,
                  ipaddr,
                  port=23,
-                 axis=1,
+                 naxis=4,
                  timeout=2,
                  name='Picomotor',
                  verbose=False):
@@ -67,12 +67,12 @@ class Picomotor(AbstractMotor):
         self.port = port
         self.timeout = timeout
         self.logger = Logger.of('Picomotor')
-        self.axis = axis
+        self.naxis = naxis
         self.verbose = verbose
 
-        self._actual_position_in_steps = 0
-        self._has_been_homed = False
-        self._last_commanded_position = 0
+        self._actual_position_in_steps = [0] * naxis
+        self._has_been_homed = [False] * naxis
+        self._last_commanded_position = [0] * naxis
         self._sock = None
 
     def _connect(self):
@@ -82,16 +82,16 @@ class Picomotor(AbstractMotor):
         self._sock.settimeout(self.timeout)
         self._sock.connect((self.ipaddr, self.port))
 
-    def _cmd(self, cmd, *args):
+    def _cmd(self, axis, cmd, *args):
         '''
         Send a command to the motor
         '''
-        cmdstr = '%d%s' % (self.axis, cmd)
+        cmdstr = '%d%s' % (axis, cmd)
         cmdstr += ','.join(map(str,args)) + '\n'
         self._sock.send(cmdstr.encode())
 
-    def _ask(self, cmd, *args):
-        self._cmd(cmd, *args)
+    def _ask(self, axis, cmd, *args):
+        self._cmd(axis, cmd, *args)
         ans = self._sock.recv(128)
 
         # There are some garbage bytes when reconnecting, skip them
@@ -100,54 +100,54 @@ class Picomotor(AbstractMotor):
         return ans.strip()
 
     @_reconnect
-    def _moveby(self, steps):
+    def _moveby(self, axis=1, steps):
         if self.verbose:
-            print('Moving by %d steps' % steps)
-        self._cmd('PR', steps)
+            print('Moving axis %d by %d steps' % (axis, steps))
+        self._cmd(axis, 'PR', steps)
 
     @override
     def name(self):
         return self._name
 
     @override
-    def home(self):
+    def home(self, axis=1):
         raise PicomotorException('Home command is not supported')
 
     @_reconnect
     @override
-    def position(self):
-        return int(self._ask('PA?'))
+    def position(self, axis=1):
+        return int(self._ask(axis, 'PA?'))
 
     @override
-    def move_to(self, position_in_steps):
-        delta = position_in_steps - self.position()
-        self._last_commanded_position = position_in_steps
-        return self._moveby(delta)
+    def move_to(self, axis=1, position_in_steps):
+        delta = position_in_steps - self.position(axis)
+        self._last_commanded_position[axis-1] = position_in_steps
+        return self._moveby(axis, delta)
 
     @override
-    def stop(self):
+    def stop(self, axis=1):
         raise PicomotorException('Stop command is not supported')
 
     @override
-    def deinitialize(self):
+    def deinitialize(self, axis=1):
         raise PicomotorException('Deinitialize command is not supported')
 
     @override
-    def steps_per_SI_unit(self):
+    def steps_per_SI_unit(self, axis=1):
         return 1.0 / 20e-9  #  20 nanometers/step (TBC)
 
     @override
-    def was_homed(self):
+    def was_homed(self, axis=1):
         return True
 
     @override
-    def type(self):
+    def type(self, axis=1):
         return MotorStatus.TYPE_LINEAR
 
     @override
-    def is_moving(self):
+    def is_moving(self, axis=1):
         return False  # TBD
 
     @override
-    def last_commanded_position(self):
-        return self._last_commanded_position
+    def last_commanded_position(self, axis=1):
+        return self._last_commanded_position[axis-1]
