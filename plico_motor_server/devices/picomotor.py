@@ -1,5 +1,4 @@
-import asyncio
-from newfocus8742 import tcp
+import socket
 
 from plico.utils.logger import Logger
 from plico.utils.decorator import override
@@ -11,6 +10,28 @@ class PicomotorException(Exception):
     pass
 
 
+class MyTcpSocket(socket.socket):
+    '''
+    TCP socket with verbose flag, for debug purposes
+    '''
+    def __init__(self, verbose=False):
+        self._verbose = verbose
+        super().__init__(socket.AF_INET, socket.SOCK_STREAM)
+
+    def send(self, bytes, flags=0):
+        if self._verbose:
+            print('WRITING:', bytes)
+        super().send(bytes, flags)
+
+    def recv(self, bufsize, flags=0):
+        if self._verbose:
+            print('READING: ', end='')
+        msg = super().recv(bufsize, flags)
+        if self._verbose:
+            print(msg)
+        return msg
+
+
 def _reconnect(f):
     '''
     Make sure that the function is executed
@@ -19,68 +40,70 @@ def _reconnect(f):
 
     Any communication problem will raise a PicomotorException
     '''
-
-    async def func(self, *args, **kwargs):
+    def func(self, *args, **kwargs):
         try:
-            if not self.connected:
-                await self._connect()
-            return await f(self, *args, **kwargs)
-        except (asyncio.TimeoutError, OSError) as ex:
-            self.connected = False
-            raise ex
-
+            if not self._sock:
+                self._connect()
+            return f(self, *args, **kwargs)
+        except socket.timeout:
+            self._sock = None
+            raise PicomotorException
     return func
 
 
 class Picomotor(AbstractMotor):
-    '''
-    Picomotor piezo actuator controlled via a Newport controller 8742
-    with tcp connection.
-    Hides the asyncio event loop, exposing synchronous methods
+    '''Picomotor class.
     '''
 
     def __init__(self,
                  ipaddr,
+                 port=23,
                  axis=1,
                  timeout=2,
                  name='Picomotor',
-                 port=30023,
                  verbose=False):
         self._name = name
         self.ipaddr = ipaddr
         self.port = port
         self.timeout = timeout
-        self.connected = False
         self.logger = Logger.of('Picomotor')
         self.axis = axis
+        self.verbose = verbose
 
         self._actual_position_in_steps = 0
         self._has_been_homed = False
-        self.loop = asyncio.get_event_loop()
-        self.verbose = verbose
         self._last_commanded_position = 0
+        self._sock = None
 
-    async def _connect(self):
+    def _connect(self):
         if self.verbose:
             print('Connecting to picomotor at', self.ipaddr)
-        future = tcp.NewFocus8742TCP.connect(self.ipaddr, port=self.port)
-        self.motor = await asyncio.wait_for(future, self.timeout)
-        self.connected = True
+        self._sock = MyTcpSocket(self.verbose)
+        self._sock.settimeout(self.timeout)
+        self._sock.connect((self.ipaddr, self.port))
 
-    async def _timeout(self, future):
-        '''Wrapper for awaitable futures, adding a timeout'''
-        return await asyncio.wait_for(future, self.timeout)
+    def _cmd(self, cmd, *args):
+        '''
+        Send a command to the motor
+        '''
+        cmdstr = '%d%s' % (self.axis, cmd)
+        cmdstr += ','.join(map(str,args)) + '\n'
+        self._sock.send(cmdstr.encode())
+
+    def _ask(self, cmd, *args):
+        self._cmd(cmd, *args)
+        ans = self._sock.recv(128)
+
+        # There are some garbage bytes when reconnecting, skip them
+        if ans[0] == 255:
+            ans = self._sock.recv(128)
+        return ans.strip()
 
     @_reconnect
-    async def _moveby(self, steps):
-
+    def _moveby(self, steps):
         if self.verbose:
-            print('Moving by %d steps', steps)
-        self.motor.set_relative(self.axis, steps)
-
-    @_reconnect
-    async def _pos(self):
-        return await self._timeout(self.motor.position(self.axis))
+            print('Moving by %d steps' % steps)
+        self._cmd('PR', steps)
 
     @override
     def name(self):
@@ -90,15 +113,16 @@ class Picomotor(AbstractMotor):
     def home(self):
         raise PicomotorException('Home command is not supported')
 
+    @_reconnect
     @override
     def position(self):
-        return self.loop.run_until_complete(self._pos())
+        return int(self._ask('PA?'))
 
     @override
     def move_to(self, position_in_steps):
         delta = position_in_steps - self.position()
-        self._last_commanded_position = position_in_steps,
-        return self.loop.run_until_complete(self._moveby(delta))
+        self._last_commanded_position = position_in_steps
+        return self._moveby(delta)
 
     @override
     def stop(self):

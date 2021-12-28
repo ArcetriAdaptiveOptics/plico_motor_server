@@ -34,14 +34,13 @@ class Runner(BaseRunner):
         self._motor = SimulatedMotor(motorName)
 
     def _createPicomotor(self, motorDeviceSection):
-        motorName = self.configuration.deviceName(motorDeviceSection)
-        ipAddress = self.configuration.getValue(motorDeviceSection,
-                                                'ip_address')
+        name = self.configuration.deviceName(motorDeviceSection)
+        ipaddr = self.configuration.getValue(motorDeviceSection, 'ip_address')
         axis = self.configuration.getValue(
             motorDeviceSection, 'axis', getint=True)
-        commTimeout = self.configuration.getValue(
+        timeout = self.configuration.getValue(
             motorDeviceSection, 'comm_timeout', getfloat=True)
-        self._motor = Picomotor(ipAddress, axis, commTimeout, motorName)
+        self._motor = Picomotor(ipaddr, axis=axis, timeout=timeout, name=name)
 
     def _replyPort(self):
         return self.configuration.replyPort(self.getConfigurationSection())
