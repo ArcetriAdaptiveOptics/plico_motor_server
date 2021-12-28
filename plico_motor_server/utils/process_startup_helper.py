@@ -25,3 +25,8 @@ class ProcessStartUpHelper(object):
         return os.path.join(self._moduleRoot,
                             'utils',
                             'plico_motor_server_stop.py')
+
+    def fakeNewFocus8742ScriptPath(self):
+        return os.path.join(self._moduleRoot,
+                            'devices',
+                            'fake_newfocus8742.py')

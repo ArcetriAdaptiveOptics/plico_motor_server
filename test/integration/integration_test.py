@@ -19,6 +19,8 @@ from plico_motor_server.process_monitor.runner import Runner as ProcessMonitorRu
 from plico_motor.client.motor_client import MotorClient
 from plico_motor.client.snapshot_entry import SnapshotEntry
 from plico_motor_server.controller.runner import Runner
+from plico_motor_server.devices.picomotor import PicomotorException
+from plico_motor_server.devices.fake_newfocus8742 import NewFocus8742ServerProtocol
 
 
 @unittest.skipIf(sys.platform == "win32",
@@ -73,6 +75,9 @@ class IntegrationTest(unittest.TestCase):
         if self.server is not None:
             TestHelper.terminateSubprocess(self.server)
 
+        if self.fakenewfocus8742 is not None:
+            TestHelper.terminateSubprocess(self.fakenewfocus8742)
+
         if self._wasSuccessful:
             self._removeTestFolderIfItExists()
 
@@ -93,6 +98,18 @@ class IntegrationTest(unittest.TestCase):
             stdout=serverLog, stderr=serverLog)
         Poller(5).check(MessageInFileProbe(
             ProcessMonitorRunner.RUNNING_MESSAGE, self.SERVER_LOG_PATH))
+
+    def _startFakeNewFocus8742(self):
+        psh = ProcessStartUpHelper()
+        logPath = os.path.join(self.LOG_DIR, "newfocus8742.out")
+        serverLog = open(logPath, "wb")
+        self.fakenewfocus8742 = subprocess.Popen(
+            [psh.fakeNewFocus8742ScriptPath(),
+             self.CONF_FILE,
+             self.CONF_SECTION],
+            stdout=serverLog, stderr=serverLog)
+        Poller(5).check(MessageInFileProbe(
+            NewFocus8742ServerProtocol.RUNNING_MESSAGE, logPath))
 
     def _testProcessesActuallyStarted(self):
         controllerLogFile = os.path.join(
@@ -133,7 +150,7 @@ class IntegrationTest(unittest.TestCase):
     def _test_get_snapshot(self):
         snapshot = self.client2.snapshot('aa')
         snKey = 'aa.%s' % SnapshotEntry.MOTOR_NAME
-        self.assertEqual('My Simulated motor no 2', snapshot[snKey])
+        self.assertEqual('My 4 axis Picomotor', snapshot[snKey])
 
     def _test_server_info(self):
         serverInfo = self.client1.serverInfo()
@@ -147,34 +164,40 @@ class IntegrationTest(unittest.TestCase):
 
     def _test_home_and_get_position(self):
         self.client1.home()
-        self.client2.home()
-        self.assertTrue(self.client1.status().was_homed)
+        Poller(3).check(ExecutionProbe(
+            lambda: self.assertTrue(self.client1.status().was_homed)))
         self.assertEqual(self.client1.position(), 0)
-        self.assertEqual(self.client2.position(), 0)
+
+    def _test_picomotor_raise_exception_on_home(self):
+        self.assertRaises(PicomotorException, self.client2.home)
 
     def _test_move_to(self):
         self.client1.move_to(123)
-        self.client2.move_to(-34.5)
+        self.client2.move_to(-34)
         Poller(3).check(ExecutionProbe(
             lambda: self.assertEqual(123,
                                      self.client1.position())))
         Poller(3).check(ExecutionProbe(
-            lambda: self.assertEqual(int(-34.5),
+            lambda: self.assertEqual(int(-34),
                                      self.client2.position())))
 
     def _test_move_by(self):
         self.client1.move_by(-23)
+        self.client2.move_by(10)
         Poller(3).check(ExecutionProbe(
-            lambda: self.assertEqual(100,
-                                     self.client1.position())))
+            lambda: self.assertEqual(100, self.client1.position())))
+        Poller(3).check(ExecutionProbe(
+            lambda: self.assertEqual(-24, self.client2.position())))
 
     def test_main(self):
         self._buildClients()
         self._createStarterScripts()
+        self._startFakeNewFocus8742()
         self._startProcesses()
         self._testProcessesActuallyStarted()
         self._test_at_boot_is_not_homed()
         self._test_home_and_get_position()
+        self._test_picomotor_raise_exception_on_home()
         self._test_move_to()
         self._test_move_by()
         self._test_get_snapshot()

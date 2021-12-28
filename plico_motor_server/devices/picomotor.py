@@ -14,6 +14,7 @@ class MyTcpSocket(socket.socket):
     '''
     TCP socket with verbose flag, for debug purposes
     '''
+
     def __init__(self, verbose=False):
         self._verbose = verbose
         super().__init__(socket.AF_INET, socket.SOCK_STREAM)
@@ -40,6 +41,7 @@ def _reconnect(f):
 
     Any communication problem will raise a PicomotorException
     '''
+
     def func(self, *args, **kwargs):
         try:
             if not self._sock:
@@ -48,6 +50,7 @@ def _reconnect(f):
         except socket.timeout:
             self._sock = None
             raise PicomotorException
+
     return func
 
 
@@ -61,7 +64,8 @@ class Picomotor(AbstractMotor):
                  axis=1,
                  timeout=2,
                  name='Picomotor',
-                 verbose=False):
+                 verbose=False,
+                 **_):
         self._name = name
         self.ipaddr = ipaddr
         self.port = port
@@ -87,7 +91,7 @@ class Picomotor(AbstractMotor):
         Send a command to the motor
         '''
         cmdstr = '%d%s' % (self.axis, cmd)
-        cmdstr += ','.join(map(str,args)) + '\n'
+        cmdstr += ','.join(map(str, args)) + '\n'
         self._sock.send(cmdstr.encode())
 
     def _ask(self, cmd, *args):
