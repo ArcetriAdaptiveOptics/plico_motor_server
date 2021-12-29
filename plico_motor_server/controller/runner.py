@@ -41,6 +41,23 @@ class Runner(BaseRunner):
         timeout = self.configuration.getValue(
             motorDeviceSection, 'comm_timeout', getfloat=True)
         self._motor = Picomotor(ipaddr, naxis=naxis, timeout=timeout, name=name)
+        kwargs = {'axis': axis, 'timeout': timeout, 'name': name}
+        try:
+            port = self.configuration.basePort(motorDeviceSection)
+            kwargs['port'] = port
+        except KeyError:
+            pass
+        self._motor = Picomotor(ipaddr, **kwargs)
+        #     self._motor = Picomotor(ipaddr,
+        #                             port=port,
+        #                             axis=axis,
+        #                             timeout=timeout,
+        #                             name=name)
+        # else:
+        #     self._motor = Picomotor(ipaddr,
+        #                             axis=axis,
+        #                             timeout=timeout,
+        #                             name=name)
 
     def _replyPort(self):
         return self.configuration.replyPort(self.getConfigurationSection())

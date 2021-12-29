@@ -15,3 +15,4 @@ class Constants:
     KILL_ALL_PROCESS_NAME = 'plico_motor_kill_all'
     SERVER_1_PROCESS_NAME = 'plico_motor_server_1'
     SERVER_2_PROCESS_NAME = 'plico_motor_server_2'
+    FAKE_NEWFOCUS8742_PROCESS_NAME = 'plico_motor_fake_newfocus8742'

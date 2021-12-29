@@ -39,3 +39,8 @@ class StarterScriptCreator(StarterScriptCreatorBase):
             psh.processProcessMonitorStopScriptPath(),
             'not used'
         )
+        self._createAStarterScript(
+            os.path.join(self._binDir, Constants.FAKE_NEWFOCUS8742_PROCESS_NAME),
+            psh.fakeNewFocus8742ScriptPath(),
+            'not used'
+        )
