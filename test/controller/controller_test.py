@@ -8,7 +8,7 @@ class MyReplySocket():
     pass
 
 
-class MyPublisherSocket():
+class MyStatusSocket():
     pass
 
 
@@ -36,8 +36,7 @@ class MotorControllerTest(unittest.TestCase):
         self._motor = SimulatedMotor()
         self._rpcHandler = MyRpcHandler()
         self._replySocket = MyReplySocket()
-        self._publisherSocket = MyPublisherSocket()
-        self._statusSocket = MyPublisherSocket()
+        self._statusSocket = MyStatusSocket()
         self._serverName = 'pippo'
         self._ports = 'foo'
         self._ctrl = MotorController(
@@ -45,26 +44,28 @@ class MotorControllerTest(unittest.TestCase):
             self._ports,
             self._motor,
             self._replySocket,
-            self._publisherSocket,
             self._statusSocket,
             self._rpcHandler)
 
     def tearDown(self):
         self._motor.raise_exception_on_deinitialize(False)
-        self._motor.deinitialize()
+        self._motor.deinitialize(1)
 
     def test_publishes_status(self):
         self._ctrl.step()
         status = self._rpcHandler.getLastPublished(
             self._statusSocket)
-        self.assertEqual(self._motor.position(),
-                         status.position)
-        self.assertEqual(self._motor.is_moving(),
-                         status.is_moving)
-        self.assertEqual(self._motor.steps_per_SI_unit(),
-                         status.steps_per_SI_unit)
-        self.assertEqual(self._motor.was_homed(),
-                         status.was_homed)
+
+        for axis in range(self._motor.naxes()):
+            ax = axis+1
+            self.assertEqual(self._motor.position(ax),
+                             status[axis].position)
+            self.assertEqual(self._motor.is_moving(ax),
+                             status[axis].is_moving)
+            self.assertEqual(self._motor.steps_per_SI_unit(ax),
+                             status[axis].steps_per_SI_unit)
+            self.assertEqual(self._motor.was_homed(ax),
+                             status[axis].was_homed)
 
     def test_new_status_is_published_at_every_step(self):
         self._ctrl.step()
@@ -81,14 +82,14 @@ class MotorControllerTest(unittest.TestCase):
         self.assertTrue(self._ctrl.isTerminated())
 
     def test_home(self):
-        self._ctrl.home()
-        self.assertTrue(self._motor.was_homed())
+        self._ctrl.home(1)
+        self.assertTrue(self._motor.was_homed(1))
 
     def test_move_to_by(self):
-        self._ctrl.move_to(123)
-        self.assertEqual(123, self._motor.position())
-        self._ctrl.move_by(-10)
-        self.assertEqual(113, self._motor.position())
+        self._ctrl.move_to(1, 123)
+        self.assertEqual(123, self._motor.position(1))
+        self._ctrl.move_by(1, -10)
+        self.assertEqual(113, self._motor.position(1))
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ from plico.utils.logger import Logger
 from plico_motor_server.devices.simulated_motor import SimulatedMotor
 
 
-class SimulatedAuxiliaryCameraTest(unittest.TestCase):
+class SimulatedMotorTest(unittest.TestCase):
 
     def setUp(self):
         self._setUpLogging()
@@ -13,7 +13,7 @@ class SimulatedAuxiliaryCameraTest(unittest.TestCase):
 
     def tearDown(self):
         self._motor.raise_exception_on_deinitialize(False)
-        self._motor.deinitialize()
+        self._motor.deinitialize(1)
 
     def _setUpLogging(self):
         FORMAT = '%(asctime)s %(levelname)s %(message)s'
@@ -21,8 +21,8 @@ class SimulatedAuxiliaryCameraTest(unittest.TestCase):
         self._logger = Logger.of(self.__class__.__name__)
 
     def test_move_to(self):
-        self._motor.move_to(123)
-        self.assertEqual(123, self._motor.position())
+        self._motor.move_to(1, 123)
+        self.assertEqual(123, self._motor.position(1))
 
 
 if __name__ == "__main__":

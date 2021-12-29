@@ -53,6 +53,16 @@ class AbstractMotor(with_metaclass(abc.ABCMeta, object)):
         '''
         assert False
 
+    @abc.abstractmethod
+    def naxes(self):
+        '''
+        Returns
+        ------
+        naxes: int
+            number of motor axes
+        '''
+        assert False
+
     # --------------
     # Commands
 

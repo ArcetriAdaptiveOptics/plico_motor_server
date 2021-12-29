@@ -82,6 +82,10 @@ class Picomotor(AbstractMotor):
         self._sock.settimeout(self.timeout)
         self._sock.connect((self.ipaddr, self.port))
 
+    @override
+    def naxes(self):
+        return self.naxis
+
     def _cmd(self, axis, cmd, *args):
         '''
         Send a command to the motor
@@ -100,7 +104,7 @@ class Picomotor(AbstractMotor):
         return ans.strip()
 
     @_reconnect
-    def _moveby(self, axis=1, steps):
+    def _moveby(self, axis, steps):
         if self.verbose:
             print('Moving axis %d by %d steps' % (axis, steps))
         self._cmd(axis, 'PR', steps)
@@ -110,44 +114,44 @@ class Picomotor(AbstractMotor):
         return self._name
 
     @override
-    def home(self, axis=1):
+    def home(self, axis):
         raise PicomotorException('Home command is not supported')
 
     @_reconnect
     @override
-    def position(self, axis=1):
+    def position(self, axis):
         return int(self._ask(axis, 'PA?'))
 
     @override
-    def move_to(self, axis=1, position_in_steps):
+    def move_to(self, axis, position_in_steps):
         delta = position_in_steps - self.position(axis)
         self._last_commanded_position[axis-1] = position_in_steps
         return self._moveby(axis, delta)
 
     @override
-    def stop(self, axis=1):
+    def stop(self, axis):
         raise PicomotorException('Stop command is not supported')
 
     @override
-    def deinitialize(self, axis=1):
+    def deinitialize(self, axis):
         raise PicomotorException('Deinitialize command is not supported')
 
     @override
-    def steps_per_SI_unit(self, axis=1):
+    def steps_per_SI_unit(self, axis):
         return 1.0 / 20e-9  #  20 nanometers/step (TBC)
 
     @override
-    def was_homed(self, axis=1):
+    def was_homed(self, axis):
         return True
 
     @override
-    def type(self, axis=1):
+    def type(self, axis):
         return MotorStatus.TYPE_LINEAR
 
     @override
-    def is_moving(self, axis=1):
+    def is_moving(self, axis):
         return False  # TBD
 
     @override
-    def last_commanded_position(self, axis=1):
+    def last_commanded_position(self, axis):
         return self._last_commanded_position[axis-1]
