@@ -36,11 +36,11 @@ class Runner(BaseRunner):
     def _createPicomotor(self, motorDeviceSection):
         name = self.configuration.deviceName(motorDeviceSection)
         ipaddr = self.configuration.getValue(motorDeviceSection, 'ip_address')
-        axis = self.configuration.getValue(
-            motorDeviceSection, 'axis', getint=True)
+        naxis = self.configuration.getValue(
+            motorDeviceSection, 'naxis', getint=True)
         timeout = self.configuration.getValue(
             motorDeviceSection, 'comm_timeout', getfloat=True)
-        kwargs = {'axis': axis, 'timeout': timeout, 'name': name}
+        kwargs = {'naxis': naxis, 'timeout': timeout, 'name': name}
         try:
             port = self.configuration.basePort(motorDeviceSection)
             kwargs['port'] = port
@@ -61,9 +61,6 @@ class Runner(BaseRunner):
     def _replyPort(self):
         return self.configuration.replyPort(self.getConfigurationSection())
 
-    def _publisherPort(self):
-        return self.configuration.publisherPort(self.getConfigurationSection())
-
     def _statusPort(self):
         return self.configuration.statusPort(self.getConfigurationSection())
 
@@ -74,8 +71,6 @@ class Runner(BaseRunner):
             self.configuration, self.getConfigurationSection())
         self._replySocket = self.rpc().replySocket(
             self._zmqPorts.SERVER_REPLY_PORT)
-        self._publishSocket = self.rpc().publisherSocket(
-            self._zmqPorts.SERVER_PUBLISHER_PORT, hwm=100)
         self._statusSocket = self.rpc().publisherSocket(
             self._zmqPorts.SERVER_STATUS_PORT, hwm=1)
 
@@ -86,7 +81,6 @@ class Runner(BaseRunner):
             self._zmqPorts,
             self._motor,
             self._replySocket,
-            self._publishSocket,
             self._statusSocket,
             self.rpc())
 

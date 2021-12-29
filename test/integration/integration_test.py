@@ -13,14 +13,18 @@ from plico.utils.logger import Logger
 from plico.rpc.sockets import Sockets
 from plico.rpc.zmq_ports import ZmqPorts
 from plico_motor_server.utils.constants import Constants
-from plico_motor_server.utils.starter_script_creator import StarterScriptCreator
-from plico_motor_server.utils.process_startup_helper import ProcessStartUpHelper
-from plico_motor_server.process_monitor.runner import Runner as ProcessMonitorRunner
+from plico_motor_server.utils.starter_script_creator import \
+    StarterScriptCreator
+from plico_motor_server.utils.process_startup_helper import \
+    ProcessStartUpHelper
+from plico_motor_server.process_monitor.runner import Runner as \
+    ProcessMonitorRunner
 from plico_motor.client.motor_client import MotorClient
 from plico_motor.client.snapshot_entry import SnapshotEntry
 from plico_motor_server.controller.runner import Runner
 from plico_motor_server.devices.picomotor import PicomotorException
-from plico_motor_server.devices.fake_newfocus8742 import NewFocus8742ServerProtocol
+from plico_motor_server.devices.fake_newfocus8742 import \
+    NewFocus8742ServerProtocol
 
 
 @unittest.skipIf(sys.platform == "win32",
@@ -132,8 +136,9 @@ class IntegrationTest(unittest.TestCase):
         ports2 = ZmqPorts.fromConfiguration(
             self.configuration,
             Constants.SERVER_2_CONFIG_SECTION)
+        self.client2Axis = 2
         self.client2 = MotorClient(
-            self.rpc, Sockets(ports2, self.rpc))
+            self.rpc, Sockets(ports2, self.rpc), axis=self.client2Axis)
 
     def _check_backdoor(self):
         self.client1.execute(

@@ -12,7 +12,7 @@ class AbstractMotor(with_metaclass(abc.ABCMeta, object)):
         assert False
 
     @abc.abstractmethod
-    def position(self):
+    def position(self, axis=1):
         '''
         Returns
         ------
@@ -22,7 +22,7 @@ class AbstractMotor(with_metaclass(abc.ABCMeta, object)):
         assert False
 
     @abc.abstractmethod
-    def steps_per_SI_unit(self):
+    def steps_per_SI_unit(self, axis=1):
         '''
         Returns
         ------
@@ -32,19 +32,19 @@ class AbstractMotor(with_metaclass(abc.ABCMeta, object)):
         assert False
 
     @abc.abstractmethod
-    def was_homed(self):
+    def was_homed(self, axis=1):
         assert False
 
     @abc.abstractmethod
-    def type(self):
+    def type(self, axis=1):
         assert False
 
     @abc.abstractmethod
-    def is_moving(self):
+    def is_moving(self, axis=1):
         assert False
 
     @abc.abstractmethod
-    def last_commanded_position(self):
+    def last_commanded_position(self, axis=1):
         '''
         Returns
         ------
@@ -53,18 +53,28 @@ class AbstractMotor(with_metaclass(abc.ABCMeta, object)):
         '''
         assert False
 
+    @abc.abstractmethod
+    def naxes(self):
+        '''
+        Returns
+        ------
+        naxes: int
+            number of motor axes
+        '''
+        assert False
+
     # --------------
     # Commands
 
     @abc.abstractmethod
-    def home(self):
+    def home(self, axis=1):
         '''
         Perform homing / initialization procedure
         '''
         assert False
 
     @abc.abstractmethod
-    def move_to(self):
+    def move_to(self, axis=1):
         '''
         Move to an absolute position
 
@@ -76,10 +86,10 @@ class AbstractMotor(with_metaclass(abc.ABCMeta, object)):
         assert False
 
     @abc.abstractmethod
-    def stop(self):
+    def stop(self, axis=1):
         assert False
 
     @abc.abstractmethod
-    def deinitialize(self):
+    def deinitialize(self, axis=1):
         assert False
 

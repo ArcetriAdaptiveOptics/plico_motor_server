@@ -32,7 +32,6 @@ class NewFocus8742ServerProtocol(asyncio.Protocol):
         peername = transport.get_extra_info('peername')
         self._logger.notice('Connection from {}'.format(peername))
         self.transport = transport
-        self.transport.write(b'123456')
 
     def data_received(self, data):
         message = data.decode()[:-1]
