@@ -94,7 +94,7 @@ class Picomotor(AbstractMotor):
         '''
         Send a command to the motor
         '''
-        cmdstr = '%d%s' % (self.axis, cmd)
+        cmdstr = '%d%s' % (axis, cmd)
         cmdstr += ','.join(map(str, args)) + '\n'
         self._sock.send(cmdstr.encode())
 
