@@ -73,6 +73,7 @@ class Picomotor(AbstractMotor):
         self.logger = Logger.of('Picomotor')
         self.naxis = naxis
         self.verbose = verbose
+        self._logger = Logger.of("Picomotor")
 
         self._actual_position_in_steps = [0] * naxis
         self._has_been_homed = [False] * naxis
@@ -80,8 +81,7 @@ class Picomotor(AbstractMotor):
         self._sock = None
 
     def _connect(self):
-        if self.verbose:
-            print('Connecting to picomotor at', self.ipaddr)
+        self._logger.notice('Connecting to picomotor at %s' % self.ipaddr)
         self._sock = MyTcpSocket(self.verbose)
         self._sock.settimeout(self.timeout)
         self._sock.connect((self.ipaddr, self.port))
@@ -97,6 +97,7 @@ class Picomotor(AbstractMotor):
         cmdstr = '%d%s' % (axis, cmd)
         cmdstr += ','.join(map(str, args)) + '\n'
         self._sock.send(cmdstr.encode())
+        self._logger.debug('Sent command %r' % (cmdstr))
 
     def _ask(self, axis, cmd, *args):
         self._cmd(axis, cmd, *args)
@@ -105,12 +106,13 @@ class Picomotor(AbstractMotor):
         # There are some garbage bytes when reconnecting, skip them
         if ans[0] == 255:
             ans = self._sock.recv(128)
+        # According to newfocus8742 the reply must end with \r\n
+        assert ans[-2:] == b'\r\n'
         return ans.strip()
 
     @_reconnect
     def _moveby(self, axis, steps):
-        if self.verbose:
-            print('Moving axis %d by %d steps' % (axis, steps))
+        self._logger.notice('Moving axis %d by %d steps' % (axis, steps))
         self._cmd(axis, 'PR', steps)
 
     @override
@@ -124,12 +126,15 @@ class Picomotor(AbstractMotor):
     @_reconnect
     @override
     def position(self, axis):
-        return int(self._ask(axis, 'PA?'))
+        curr_pos = int(self._ask(axis, 'PA?'))
+        self._logger.debug(
+            'Current position axis %d = %d steps' % (axis, curr_pos))
+        return curr_pos
 
     @override
     def move_to(self, axis, position_in_steps):
         delta = position_in_steps - self.position(axis)
-        self._last_commanded_position[axis-1] = position_in_steps
+        self._last_commanded_position[axis - 1] = position_in_steps
         return self._moveby(axis, delta)
 
     @override
@@ -158,4 +163,4 @@ class Picomotor(AbstractMotor):
 
     @override
     def last_commanded_position(self, axis):
-        return self._last_commanded_position[axis-1]
+        return self._last_commanded_position[axis - 1]

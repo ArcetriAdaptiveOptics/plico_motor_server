@@ -52,8 +52,8 @@ class MotorController(Stepable,
         self._logger.notice("Got request to terminate")
         try:
             for i in range(self._motor.naxes()):
-                self._motor.stop(axis=i+1)
-                self._motor.deinitialize(axis=i+1)
+                self._motor.stop(axis=i + 1)
+                self._motor.deinitialize(axis=i + 1)
         except Exception as e:
             self._logger.warn(
                 "Could not stop & deinitialize motor: %s" % str(e))
@@ -80,7 +80,7 @@ class MotorController(Stepable,
     def _getMotorStatus(self):
         axisStatus = []
         for i in range(self._motor.naxes()):
-            axis = i+1
+            axis = i + 1
             motorStatus = MotorStatus(
                 self._motor.name(),
                 self._motor.position(axis),
@@ -92,6 +92,8 @@ class MotorController(Stepable,
                 axis
             )
             axisStatus.append(motorStatus)
+            self._logger.debug(
+                "Axis %d status %s" % (axis, motorStatus.as_dict()))
         return axisStatus
 
     def _publishStatus(self):

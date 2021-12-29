@@ -13,14 +13,18 @@ from plico.utils.logger import Logger
 from plico.rpc.sockets import Sockets
 from plico.rpc.zmq_ports import ZmqPorts
 from plico_motor_server.utils.constants import Constants
-from plico_motor_server.utils.starter_script_creator import StarterScriptCreator
-from plico_motor_server.utils.process_startup_helper import ProcessStartUpHelper
-from plico_motor_server.process_monitor.runner import Runner as ProcessMonitorRunner
+from plico_motor_server.utils.starter_script_creator import \
+    StarterScriptCreator
+from plico_motor_server.utils.process_startup_helper import \
+    ProcessStartUpHelper
+from plico_motor_server.process_monitor.runner import Runner as \
+    ProcessMonitorRunner
 from plico_motor.client.motor_client import MotorClient
 from plico_motor.client.snapshot_entry import SnapshotEntry
 from plico_motor_server.controller.runner import Runner
 from plico_motor_server.devices.picomotor import PicomotorException
-from plico_motor_server.devices.fake_newfocus8742 import NewFocus8742ServerProtocol
+from plico_motor_server.devices.fake_newfocus8742 import \
+    NewFocus8742ServerProtocol
 
 
 @unittest.skipIf(sys.platform == "win32",
@@ -117,11 +121,11 @@ class IntegrationTest(unittest.TestCase):
             '%s.log' % Constants.SERVER_1_CONFIG_SECTION)
         Poller(5).check(MessageInFileProbe(
             Runner.RUNNING_MESSAGE, controllerLogFile))
-#        controller2LogFile = os.path.join(
-#            self.LOG_DIR,
-#            '%s.log' % Constants.SERVER_2_CONFIG_SECTION)
-#        Poller(5).check(MessageInFileProbe(
-#            Runner.RUNNING_MESSAGE, controller2LogFile))
+        controller2LogFile = os.path.join(
+            self.LOG_DIR,
+            '%s.log' % Constants.SERVER_2_CONFIG_SECTION)
+        Poller(5).check(MessageInFileProbe(
+            Runner.RUNNING_MESSAGE, controller2LogFile))
 
     def _buildClients(self):
         ports1 = ZmqPorts.fromConfiguration(
@@ -132,8 +136,9 @@ class IntegrationTest(unittest.TestCase):
         ports2 = ZmqPorts.fromConfiguration(
             self.configuration,
             Constants.SERVER_2_CONFIG_SECTION)
+        self.client2Axis = 2
         self.client2 = MotorClient(
-            self.rpc, Sockets(ports2, self.rpc))
+            self.rpc, Sockets(ports2, self.rpc), axis=self.client2Axis)
 
     def _check_backdoor(self):
         self.client1.execute(
@@ -169,25 +174,25 @@ class IntegrationTest(unittest.TestCase):
         self.assertEqual(self.client1.position(), 0)
 
     def _test_picomotor_raise_exception_on_home(self):
-        self.assertRaises(PicomotorException, self.client1.home)
+        self.assertRaises(PicomotorException, self.client2.home)
 
     def _test_move_to(self):
         self.client1.move_to(123)
-#        self.client2.move_to(-34)
+        self.client2.move_to(-34)
         Poller(3).check(ExecutionProbe(
             lambda: self.assertEqual(123,
                                      self.client1.position())))
-#        Poller(3).check(ExecutionProbe(
-#            lambda: self.assertEqual(int(-34),
-#                                     self.client2.position())))
+        Poller(3).check(ExecutionProbe(
+            lambda: self.assertEqual(int(-34),
+                                     self.client2.position())))
 
     def _test_move_by(self):
         self.client1.move_by(-23)
-#        self.client2.move_by(10)
+        self.client2.move_by(10)
         Poller(3).check(ExecutionProbe(
             lambda: self.assertEqual(100, self.client1.position())))
-#        Poller(3).check(ExecutionProbe(
-#            lambda: self.assertEqual(-24, self.client2.position())))
+        Poller(3).check(ExecutionProbe(
+            lambda: self.assertEqual(-24, self.client2.position())))
 
     def test_main(self):
         self._buildClients()
@@ -197,13 +202,13 @@ class IntegrationTest(unittest.TestCase):
         self._testProcessesActuallyStarted()
         self._test_at_boot_is_not_homed()
         self._test_home_and_get_position()
-#        self._test_picomotor_raise_exception_on_home()
+        self._test_picomotor_raise_exception_on_home()
         self._test_move_to()
         self._test_move_by()
-#        self._test_get_snapshot()
+        self._test_get_snapshot()
         self._test_server_info()
         self._check_backdoor()
-        self._wasSuccessful = True
+        self._wasSuccessful = False
 
 
 if __name__ == "__main__":
