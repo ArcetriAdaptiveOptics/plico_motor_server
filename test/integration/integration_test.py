@@ -26,6 +26,32 @@ from plico_motor_server.devices.picomotor import PicomotorException
 from plico_motor_server.devices.fake_newfocus8742 import \
     NewFocus8742ServerProtocol
 
+from functools import wraps
+
+
+def _dumpEnterAndExit(enterMessage, exitMessage, f, self, *args, **kwds):
+    doDump = True
+    if doDump:
+        print(enterMessage)
+    res = f(self, *args, **kwds)
+    if doDump:
+        print(exitMessage)
+    return res
+
+
+def dumpEnterAndExit(enterMessage, exitMessage):
+
+    def wrapperFunc(f):
+
+        @wraps(f)
+        def wrapper(self, *args, **kwds):
+            return _dumpEnterAndExit(enterMessage, exitMessage,
+                                     f, self, *args, **kwds)
+
+        return wrapper
+
+    return wrapperFunc
+
 
 @unittest.skipIf(sys.platform == "win32",
                  "Integration test doesn't run on Windows. Fix it!")
@@ -55,6 +81,7 @@ class IntegrationTest(unittest.TestCase):
 
         calibrationRootDir = self.configuration.calibrationRootDir()
         self._setUpCalibrationTempFolder(calibrationRootDir)
+        print("Setup completed")
 
     def _setUpBasicLogging(self):
         logging.basicConfig(level=logging.DEBUG)
@@ -73,6 +100,7 @@ class IntegrationTest(unittest.TestCase):
         if os.path.exists(self.TEST_DIR):
             shutil.rmtree(self.TEST_DIR)
 
+    @dumpEnterAndExit("tearing down", "teared down")
     def tearDown(self):
         TestHelper.dumpFileToStdout(self.SERVER_LOG_PATH)
 
@@ -85,6 +113,7 @@ class IntegrationTest(unittest.TestCase):
         if self._wasSuccessful:
             self._removeTestFolderIfItExists()
 
+    @dumpEnterAndExit("creating starter scripts", "starter scripts created")
     def _createStarterScripts(self):
         ssc = StarterScriptCreator()
         ssc.setInstallationBinDir(self.BIN_DIR)
@@ -92,6 +121,7 @@ class IntegrationTest(unittest.TestCase):
         ssc.setConfigFileDestination(self.CONF_FILE)
         ssc.installExecutables()
 
+    @dumpEnterAndExit("starting processes", "processes started")
     def _startProcesses(self):
         psh = ProcessStartUpHelper()
         serverLog = open(os.path.join(self.LOG_DIR, "server.out"), "wb")
@@ -103,6 +133,7 @@ class IntegrationTest(unittest.TestCase):
         Poller(5).check(MessageInFileProbe(
             ProcessMonitorRunner.RUNNING_MESSAGE, self.SERVER_LOG_PATH))
 
+    @dumpEnterAndExit("starting fakenewfocus8742", "fakenewfocus8742 started")
     def _startFakeNewFocus8742(self):
         psh = ProcessStartUpHelper()
         logPath = os.path.join(self.LOG_DIR, "newfocus8742.out")
@@ -127,6 +158,7 @@ class IntegrationTest(unittest.TestCase):
         Poller(5).check(MessageInFileProbe(
             Runner.RUNNING_MESSAGE, controller2LogFile))
 
+    @dumpEnterAndExit("building clients", "clients built")
     def _buildClients(self):
         ports1 = ZmqPorts.fromConfiguration(
             self.configuration,
@@ -213,3 +245,4 @@ class IntegrationTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
