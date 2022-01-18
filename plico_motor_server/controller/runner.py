@@ -4,6 +4,7 @@ from plico.utils.base_runner import BaseRunner
 from plico_motor_server.devices.simulated_motor import \
     SimulatedMotor
 from plico_motor_server.devices.picomotor import Picomotor
+from plico_motor_server.devices.tunable_filter import TunableFilter
 from plico.utils.logger import Logger
 from plico.utils.control_loop import FaultTolerantControlLoop
 from plico.utils.decorator import override
@@ -26,6 +27,8 @@ class Runner(BaseRunner):
             self._createSimulatedMotor(motorDeviceSection)
         elif motorModel == 'picomotor':
             self._createPicomotor(motorDeviceSection)
+        elif motorModel == 'xxx':
+            self._createTunableFilter(motorDeviceSection)
         else:
             raise KeyError('Unsupported motor model %s' % motorModel)
 
@@ -57,6 +60,13 @@ class Runner(BaseRunner):
         #                             axis=axis,
         #                             timeout=timeout,
         #                             name=name)
+
+    def _createTunableFilter(self, motorDeviceSection):
+        name = self.configuration.deviceName(motorDeviceSection)
+        port = self.configuration.basePort(motorDeviceSection)
+        speed = self.configuration.getValue(
+            motorDeviceSection, 'speed', getint=True)
+        self._motor = TunableFilter(name, port, speed)
 
     def _replyPort(self):
         return self.configuration.replyPort(self.getConfigurationSection())
