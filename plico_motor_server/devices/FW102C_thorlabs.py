@@ -9,21 +9,18 @@ from plico.utils.logger import Logger
 from plico.utils.decorator import override
 from plico_motor_server.devices.abstract_motor import AbstractMotor
 
-WRITE_WL = "WL=%5.3f\r"
-READ_WL = "WL?\r"
-RESET = "R1\r"
-READ_STATUS = "@"
-BUSY_CHECK = "!"
-ESCAPE = chr(27)
+GET_ID = "*idn? (CR)"
+READ_WL = "pos? (CR)"
+WRITE_WL = "pos=%5.3f (CR)"
 
-class TunableFilterException(Exception):
+class FilterWheelException(Exception):
     pass
 
 class SerialTimeoutException(Exception):
     def __init__(self, value=-1):
         print ("Missing response from serial after %i iterrations" % value)
 
-class TunableFilter(AbstractMotor):
+class FilterWheel(AbstractMotor):
 
     def __init__(self, name, port, speed):
         """The constructor """
@@ -32,7 +29,7 @@ class TunableFilter(AbstractMotor):
         self.speed = speed
         self.naxis = 1
         self.ser = None
-        self._logger = Logger.of("TunableFilter")
+        self._logger = Logger.of("FilterWheel")
         self._last_commanded_position = []
 
     def _pollSerial(self):
@@ -53,7 +50,7 @@ class TunableFilter(AbstractMotor):
 
     def connect(self):
         if self.ser is None:
-            self._logger.notice('Connecting to tunable filter at %s' % self.port)
+            self._logger.notice('Connecting to filter wheel at %s' % self.port)
             self.ser = serial.Serial(self.port, self.speed,
                                      bytesize=serial.EIGHTBITS,
                                      parity=serial.PARITY_NONE,
@@ -68,12 +65,18 @@ class TunableFilter(AbstractMotor):
             self.ser.close()
             self.ser = None
 
-    def _get_wl(self):
+    def get_id(self):
+        cmd = bytes(GET_ID, 'utf-8')
+        tmp = self.ser.write(cmd)
+        nw = self._pollSerial()
+        out = self.ser.read(self.ser.inWaiting())
+        return out
+
+    def _get_pos(self):
         '''
         Returns
         -------
-        out: int [nm]
-            wavelength output from filter
+        out: ?
         '''
         cmd = bytes(READ_WL, 'utf-8')
         tmp = self.ser.write(cmd)
@@ -81,17 +84,16 @@ class TunableFilter(AbstractMotor):
         out = self.ser.read(self.ser.inWaiting())
         return out
 
-    def _set_wl(self, wl):
+    def _set_pos(self, n):
         '''
         Parameters
         ----------
-        wl: int [nm]
-            wavelength to set
+        n: int
+            number of filter position selected
 
         Returns
         -------
-        out: int [nm]
-            wavelength output from filter
+        out: ?
         '''
         if wl < 650 or wl > 1100:
             raise BaseException()
@@ -101,74 +103,16 @@ class TunableFilter(AbstractMotor):
         out = self.ser.read(self.ser.inWaiting())
         return out
 
-    def _reset(self):
-        '''
-        Returns
-        -------
-        out:
-        '''
-        cmd = bytes(RESET, 'utf-8')
-        tmp = self.ser.write(cmd)
-        nw = self._pollSerial()
-        out = self.ser.read(self.ser.inWaiting())
-        return out
 
-    def _get_status(self):
-        '''
-        Returns
-        -------
-        out:
-        '''
-        cmd = bytes(READ_STATUS, 'utf-8')
-        tmp = self.ser.write(cmd)
-        nw = self._pollSerial()
-        out = self.ser.read(self.ser.inWaiting())
-        return out
-
-    def _isbusy(self):
-        '''
-        Returns
-        -------
-        out:
-        '''
-        cmd = bytes(BUSY_CHECK, 'utf-8')
-        tmp = self.ser.write(cmd)
-        nw = self._pollSerial()
-        out = self.ser.read(self.ser.inWaiting())
-        return out
-
-    def _cancel(self):
-        '''
-        Returns
-        -------
-        out:
-        '''
-        cmd = bytes(ESCAPE, 'utf-8')
-        tmp = self.ser.write(cmd)
-        nw = self._pollSerial()
-        out = self.ser.read(self.ser.inWaiting())
-        return out
 
 ### Per classe astratta ###
 
     @override
     def name(self):
-        '''
-        Returns
-        -------
-        name: string
-            filter name
-        '''
         return self._name
 
     @override
     def position(self, axis):
-        '''
-        Returns
-        -------
-        curr_pos: int [nm]
-            wavelength output from filter
-        '''
         curr_pos = self._get_wl()
         self._logger.debug(
             'Current position = %d nm' % curr_pos)
@@ -176,35 +120,22 @@ class TunableFilter(AbstractMotor):
 
     @override
     def steps_per_SI_unit(self, axis):
-        raise TunableFilterException('One step is equal to one nanometer.')
-    
+        raise FilterWheelException('One step is equal to one nanometer.')
+
     @override
     def was_homed(self, axis):
-        raise TunableFilterException('Command not yet implemented.')
-    
+        raise FilterWheelException('Command not yet implemented.')
+
     @override
     def type(self, axis):
-        '''
-        Returns
-        -------
-        type: string
-             type of motor controller
-        '''
-        return MotorStatus.TYPE_LINEAR
-    
+        return MotorStatus.TYPE_ROTARY
+
     @override
     def is_moving(self, axis):
-        out = self._isbusy()
-        return out
+        raise FilterWheelException('Command not yet implemented.')
 
     @override
     def last_commanded_position(self, axis):
-        '''
-        Returns
-        ------
-        last commanded position: int
-            last set point in nm contained in last commanded position list
-        '''
         return self._last_commanded_position[-1]
 
     @override
@@ -219,29 +150,18 @@ class TunableFilter(AbstractMotor):
     
     @override
     def home(self, axis):
-        raise TunableFilterException('Home command is not supported.')
+        raise FilterWheelException('Home command is not supported.')
     
     @override
-    def move_to(self, axis, absolute_position_in_nm):
-        '''
-        Move to an absolute position
-
-        Parameters
-        ----------
-        position: int [nm]
-            desired lambda position in nanometres
-        '''
-        absolute_position_in_nm = self._set_wl(absolute_position_in_nm)
-        self._last_commanded_position.append(absolute_position_in_nm)
+    def move_to(self, axis, number_of_filter_position):
+        position = self._set_wl(number_of_filter_position)
+        self._last_commanded_position.append(position)
         return
 
     @override
     def stop(self, axis):
-        out = self._cancel()
-        return out
+        raise FilterWheelException('Stop command is not supported.')
 
     @override
     def deinitialize(self, axis):
-        raise TunableFilterException('Deinitialize command is not supported.')
-
-    
+        raise FilterWheelException('Deinitialize command is not supported.')

@@ -5,6 +5,7 @@ from plico_motor_server.devices.simulated_motor import \
     SimulatedMotor
 from plico_motor_server.devices.picomotor import Picomotor
 from plico_motor_server.devices.tunable_filter import TunableFilter
+from plico_motor_server.devices.FW102C_thorlabs import FilterWheel
 from plico.utils.logger import Logger
 from plico.utils.control_loop import FaultTolerantControlLoop
 from plico.utils.decorator import override
@@ -28,7 +29,9 @@ class Runner(BaseRunner):
         elif motorModel == 'picomotor':
             self._createPicomotor(motorDeviceSection)
         elif motorModel == 'xxx':
-            self._createTunableFilter(motorDeviceSection)
+            self._createFilterDevice(motorDeviceSection)
+        elif motorModel == 'Thorlabs_FW102C':
+            self._createFilterDevice(motorDeviceSection)
         else:
             raise KeyError('Unsupported motor model %s' % motorModel)
 
@@ -61,12 +64,16 @@ class Runner(BaseRunner):
         #                             timeout=timeout,
         #                             name=name)
 
-    def _createTunableFilter(self, motorDeviceSection):
+    def _createFilterDevice(self, motorDeviceSection):
         name = self.configuration.deviceName(motorDeviceSection)
         port = self.configuration.basePort(motorDeviceSection)
         speed = self.configuration.getValue(
             motorDeviceSection, 'speed', getint=True)
-        self._motor = TunableFilter(name, port, speed)
+        if name == 'TunableFilter':
+            self._motor = TunableFilter(name, port, speed)
+        elif name == 'FilterWheel':
+            self._motor = FilterWheel(name, port, speed)
+
 
     def _replyPort(self):
         return self.configuration.replyPort(self.getConfigurationSection())
