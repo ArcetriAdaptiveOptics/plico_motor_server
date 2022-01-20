@@ -4,8 +4,8 @@ from plico.utils.base_runner import BaseRunner
 from plico_motor_server.devices.simulated_motor import \
     SimulatedMotor
 from plico_motor_server.devices.picomotor import Picomotor
-from plico_motor_server.devices.tunable_filter import TunableFilter
-from plico_motor_server.devices.FW102C_thorlabs import FilterWheel
+from plico_motor_server.devices.KURIOSVB1_thorlabs import TunableFilter
+from plico_motor_server.devices.FW102B_thorlabs import FilterWheel
 from plico.utils.logger import Logger
 from plico.utils.control_loop import FaultTolerantControlLoop
 from plico.utils.decorator import override
