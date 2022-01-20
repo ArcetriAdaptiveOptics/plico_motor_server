@@ -12,7 +12,7 @@ from plico_motor_server.devices.abstract_motor import AbstractMotor
 GET_ID = "*idn?\r"
 WRITE_WL = "WL=%5.3f\r"
 READ_WL = "WL?\r"
-GET_STATUS = "ST?"
+GET_STATUS = "ST?\r"
 GET_TEMPERATURE = 'TP?\r'
 
 class TunableFilterException(Exception):
@@ -136,7 +136,9 @@ class TunableFilter(AbstractMotor):
         cmd = bytes(GET_STATUS, 'utf-8')
         tmp = self.ser.write(cmd)
         nw = self._pollSerial()
-        out = self.ser.read(self.ser.inWaiting())
+        out_b = self.ser.read(self.ser.inWaiting())
+        out_s = out_b.decode('utf-8')
+        out = out_s.split()[0]
         return out
     
     def get_temperature(self):
@@ -149,7 +151,9 @@ class TunableFilter(AbstractMotor):
         cmd = bytes(GET_TEMPERATURE, 'utf-8')
         tmp = self.ser.write(cmd)
         nw = self._pollSerial()
-        out = self.ser.read(self.ser.inWaiting())
+        out_b = self.ser.read(self.ser.inWaiting())
+        out_s = out_b.decode('utf-8')
+        out = out_s.split()[0]
         return out
 
 
