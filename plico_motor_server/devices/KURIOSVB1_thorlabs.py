@@ -60,7 +60,7 @@ class TunableFilter(AbstractMotor):
                                      bytesize=serial.EIGHTBITS,
                                      parity=serial.PARITY_NONE,
                                      stopbits=serial.STOPBITS_ONE)
-            out = self.get_status()
+            out = self.get_id()
             return out
         else:
             print ("Already connected")
@@ -82,7 +82,7 @@ class TunableFilter(AbstractMotor):
         nw = self._pollSerial()
         out_b = self.ser.read(self.ser.inWaiting())
         out_s = out_b.decode('utf-8')
-        out = out_s.split('\r')[1]
+        out = out_s.split('\r')[0]
         return out
 
     def _get_wl(self):
@@ -97,7 +97,7 @@ class TunableFilter(AbstractMotor):
         nw = self._pollSerial()
         out_b = self.ser.read(self.ser.inWaiting())
         out_s = out_b.decode('utf-8')
-        out = out_s.split('\r')[1]
+        out = out_s.split('\r')[0]
         return out
 
     def _set_wl(self, wl):
@@ -112,14 +112,15 @@ class TunableFilter(AbstractMotor):
         out: str [nm]
             wavelength output from filter
         '''
-        if wl < 650 or wl > 1100:
-            raise BaseException()
+        if wl < 420 or wl > 730:
+            raise BaseException('Wavelength out of range 420-730')
         cmd = bytes(WRITE_WL % wl, 'utf-8')
         tmp = self.ser.write(cmd)
         nw = self._pollSerial()
         out_b = self.ser.read(self.ser.inWaiting())
-        out_s = out_b.decode('utf-8')
-        out = out_s.split('\r')[0]
+        #out_s = out_b.decode('utf-8')
+        #out = out_s.split('\r')[0]
+        out = self._get_wl()
         return out
 
     def _get_status(self):

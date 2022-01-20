@@ -10,8 +10,8 @@ from plico.utils.decorator import override
 from plico_motor_server.devices.abstract_motor import AbstractMotor
 
 GET_ID = "*idn?\r"
-READ_WL = "pos?\r"
-WRITE_WL = "pos=%d\r"
+READ_N = "pos?\r"
+WRITE_N = "pos=%d\r"
 
 class FilterWheelException(Exception):
     pass
@@ -90,7 +90,7 @@ class FilterWheel(AbstractMotor):
         out: int
             number of filter wheel position
         '''
-        cmd = bytes(READ_WL, 'utf-8')
+        cmd = bytes(READ_N, 'utf-8')
         tmp = self.ser.write(cmd)
         nw = self._pollSerial()
         out_b = self.ser.read(self.ser.inWaiting())
@@ -112,12 +112,12 @@ class FilterWheel(AbstractMotor):
         '''
         if n < 1 or n > 6:
             raise BaseException()
-        cmd = bytes(WRITE_WL % n, 'utf-8')
+        cmd = bytes(WRITE_N % n, 'utf-8')
         tmp = self.ser.write(cmd)
         nw = self._pollSerial()
         out_b = self.ser.read(self.ser.inWaiting())
         out_s = out_b.decode('utf-8')
-        out = int(out_s.split()[1])
+        out = out_s.split()[0]
         return out
 
 
