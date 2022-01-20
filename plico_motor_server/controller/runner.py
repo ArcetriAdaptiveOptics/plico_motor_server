@@ -28,9 +28,9 @@ class Runner(BaseRunner):
             self._createSimulatedMotor(motorDeviceSection)
         elif motorModel == 'picomotor':
             self._createPicomotor(motorDeviceSection)
-        elif motorModel == 'xxx':
+        elif motorModel == 'KURIOS-VB1_thorlabs':
             self._createFilterDevice(motorDeviceSection)
-        elif motorModel == 'Thorlabs_FW102C':
+        elif motorModel == 'FW102B_thorlabs':
             self._createFilterDevice(motorDeviceSection)
         else:
             raise KeyError('Unsupported motor model %s' % motorModel)

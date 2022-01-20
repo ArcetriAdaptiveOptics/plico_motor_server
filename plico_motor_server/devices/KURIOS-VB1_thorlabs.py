@@ -9,12 +9,11 @@ from plico.utils.logger import Logger
 from plico.utils.decorator import override
 from plico_motor_server.devices.abstract_motor import AbstractMotor
 
+GET_ID = "*idn?\r"
 WRITE_WL = "WL=%5.3f\r"
 READ_WL = "WL?\r"
-RESET = "R1\r"
-READ_STATUS = "@"
-BUSY_CHECK = "!"
-ESCAPE = chr(27)
+GET_STATUS = "ST?"
+GET_TEMPERATURE = 'TP?\r'
 
 class TunableFilterException(Exception):
     pass
@@ -24,6 +23,9 @@ class SerialTimeoutException(Exception):
         print ("Missing response from serial after %i iterrations" % value)
 
 class TunableFilter(AbstractMotor):
+    '''
+    Manual: https://www.thorlabs.com/drawings/67124bd78341d22e-A3AF90CF-D9E9-9FC4-63EEF4724CA5DD84/KURIOS-VB1-Manual.pdf
+    '''
 
     def __init__(self, name, port, speed):
         """The constructor """
@@ -68,6 +70,21 @@ class TunableFilter(AbstractMotor):
             self.ser.close()
             self.ser = None
 
+    def get_id(self):
+        '''
+        Returns
+        ------
+        out = string
+            motor model type
+        '''
+        cmd = bytes(GET_ID, 'utf-8')
+        tmp = self.ser.write(cmd)
+        nw = self._pollSerial()
+        out_b = self.ser.read(self.ser.inWaiting())
+        out_s = out_b.decode('utf-8')
+        out = out_s.split('\r')[1]
+        return out
+
     def _get_wl(self):
         '''
         Returns
@@ -78,7 +95,9 @@ class TunableFilter(AbstractMotor):
         cmd = bytes(READ_WL, 'utf-8')
         tmp = self.ser.write(cmd)
         nw = self._pollSerial()
-        out = self.ser.read(self.ser.inWaiting())
+        out_b = self.ser.read(self.ser.inWaiting())
+        out_s = out_b.decode('utf-8')
+        out = out_s.split('\r')[1]
         return out
 
     def _set_wl(self, wl):
@@ -90,7 +109,7 @@ class TunableFilter(AbstractMotor):
 
         Returns
         -------
-        out: int [nm]
+        out: str [nm]
             wavelength output from filter
         '''
         if wl < 650 or wl > 1100:
@@ -98,56 +117,40 @@ class TunableFilter(AbstractMotor):
         cmd = bytes(WRITE_WL % wl, 'utf-8')
         tmp = self.ser.write(cmd)
         nw = self._pollSerial()
-        out = self.ser.read(self.ser.inWaiting())
-        return out
-
-    def _reset(self):
-        '''
-        Returns
-        -------
-        out:
-        '''
-        cmd = bytes(RESET, 'utf-8')
-        tmp = self.ser.write(cmd)
-        nw = self._pollSerial()
-        out = self.ser.read(self.ser.inWaiting())
+        out_b = self.ser.read(self.ser.inWaiting())
+        out_s = out_b.decode('utf-8')
+        out = out_s.split('\r')[0]
         return out
 
     def _get_status(self):
         '''
         Returns
         -------
-        out:
+        out: byte
+            Returns current filter status:
+            0 - initialization
+            1 - warm up
+            2 - ready
         '''
-        cmd = bytes(READ_STATUS, 'utf-8')
+        cmd = bytes(GET_STATUS, 'utf-8')
+        tmp = self.ser.write(cmd)
+        nw = self._pollSerial()
+        out = self.ser.read(self.ser.inWaiting())
+        return out
+    
+    def get_temperature(self):
+        '''
+        Returns
+        -------
+        out: byte
+            temperature
+        '''
+        cmd = bytes(GET_TEMPERATURE, 'utf-8')
         tmp = self.ser.write(cmd)
         nw = self._pollSerial()
         out = self.ser.read(self.ser.inWaiting())
         return out
 
-    def _isbusy(self):
-        '''
-        Returns
-        -------
-        out:
-        '''
-        cmd = bytes(BUSY_CHECK, 'utf-8')
-        tmp = self.ser.write(cmd)
-        nw = self._pollSerial()
-        out = self.ser.read(self.ser.inWaiting())
-        return out
-
-    def _cancel(self):
-        '''
-        Returns
-        -------
-        out:
-        '''
-        cmd = bytes(ESCAPE, 'utf-8')
-        tmp = self.ser.write(cmd)
-        nw = self._pollSerial()
-        out = self.ser.read(self.ser.inWaiting())
-        return out
 
 ### Per classe astratta ###
 
@@ -166,12 +169,12 @@ class TunableFilter(AbstractMotor):
         '''
         Returns
         -------
-        curr_pos: int [nm]
+        curr_pos: string [nm]
             wavelength output from filter
         '''
         curr_pos = self._get_wl()
         self._logger.debug(
-            'Current position = %d nm' % curr_pos)
+            'Current position = %5.3f nm' % curr_pos)
         return curr_pos
 
     @override
@@ -180,7 +183,7 @@ class TunableFilter(AbstractMotor):
     
     @override
     def was_homed(self, axis):
-        raise TunableFilterException('Command not yet implemented.')
+        raise TunableFilterException('Homed command is not supported.')
     
     @override
     def type(self, axis):
@@ -194,8 +197,7 @@ class TunableFilter(AbstractMotor):
     
     @override
     def is_moving(self, axis):
-        out = self._isbusy()
-        return out
+        raise TunableFilterException('Moving command is not supported.')
 
     @override
     def last_commanded_position(self, axis):
@@ -237,8 +239,7 @@ class TunableFilter(AbstractMotor):
 
     @override
     def stop(self, axis):
-        out = self._cancel()
-        return out
+        raise TunableFilterException('Stop command is not supported.')
 
     @override
     def deinitialize(self, axis):

@@ -9,9 +9,9 @@ from plico.utils.logger import Logger
 from plico.utils.decorator import override
 from plico_motor_server.devices.abstract_motor import AbstractMotor
 
-GET_ID = "*idn? (CR)"
-READ_WL = "pos? (CR)"
-WRITE_WL = "pos=%5.3f (CR)"
+GET_ID = "*idn?\r"
+READ_WL = "pos?\r"
+WRITE_WL = "pos=%d\r"
 
 class FilterWheelException(Exception):
     pass
@@ -21,6 +21,9 @@ class SerialTimeoutException(Exception):
         print ("Missing response from serial after %i iterrations" % value)
 
 class FilterWheel(AbstractMotor):
+    '''
+    Manual: https://www.thorlabs.com/drawings/67124bd78341d22e-A3AF90CF-D9E9-9FC4-63EEF4724CA5DD84/FW102C-Manual.pdf
+    '''
 
     def __init__(self, name, port, speed):
         """The constructor """
@@ -55,7 +58,7 @@ class FilterWheel(AbstractMotor):
                                      bytesize=serial.EIGHTBITS,
                                      parity=serial.PARITY_NONE,
                                      stopbits=serial.STOPBITS_ONE)
-            out = self.get_status()
+            out = self.get_id()
             return out
         else:
             print ("Already connected")
@@ -66,22 +69,33 @@ class FilterWheel(AbstractMotor):
             self.ser = None
 
     def get_id(self):
+        '''
+        Returns
+        ------
+        out = string
+            motor model type
+        '''
         cmd = bytes(GET_ID, 'utf-8')
         tmp = self.ser.write(cmd)
         nw = self._pollSerial()
-        out = self.ser.read(self.ser.inWaiting())
+        out_b = self.ser.read(self.ser.inWaiting())
+        out_s = out_b.decode('utf-8')
+        out = out_s.split('\r')[1]
         return out
 
     def _get_pos(self):
         '''
         Returns
         -------
-        out: ?
+        out: int
+            number of filter wheel position
         '''
         cmd = bytes(READ_WL, 'utf-8')
         tmp = self.ser.write(cmd)
         nw = self._pollSerial()
-        out = self.ser.read(self.ser.inWaiting())
+        out_b = self.ser.read(self.ser.inWaiting())
+        out_s = out_b.decode('utf-8')
+        out = int(out_s.split()[1])
         return out
 
     def _set_pos(self, n):
@@ -93,14 +107,17 @@ class FilterWheel(AbstractMotor):
 
         Returns
         -------
-        out: ?
+        out: int
+            number of filter wheel position
         '''
-        if wl < 650 or wl > 1100:
+        if n < 1 or n > 6:
             raise BaseException()
-        cmd = bytes(WRITE_WL % wl, 'utf-8')
+        cmd = bytes(WRITE_WL % n, 'utf-8')
         tmp = self.ser.write(cmd)
         nw = self._pollSerial()
-        out = self.ser.read(self.ser.inWaiting())
+        out_b = self.ser.read(self.ser.inWaiting())
+        out_s = out_b.decode('utf-8')
+        out = int(out_s.split()[1])
         return out
 
 
@@ -120,11 +137,11 @@ class FilterWheel(AbstractMotor):
 
     @override
     def steps_per_SI_unit(self, axis):
-        raise FilterWheelException('One step is equal to one nanometer.')
+        raise FilterWheelException('One step is equal to one filter position.')
 
     @override
     def was_homed(self, axis):
-        raise FilterWheelException('Command not yet implemented.')
+        raise FilterWheelException('Home command is not supported.')
 
     @override
     def type(self, axis):
@@ -132,7 +149,7 @@ class FilterWheel(AbstractMotor):
 
     @override
     def is_moving(self, axis):
-        raise FilterWheelException('Command not yet implemented.')
+        raise FilterWheelException('Moving command is not supported.')
 
     @override
     def last_commanded_position(self, axis):
