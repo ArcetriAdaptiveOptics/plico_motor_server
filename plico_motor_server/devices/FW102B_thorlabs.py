@@ -8,10 +8,15 @@ import serial
 from plico.utils.logger import Logger
 from plico.utils.decorator import override
 from plico_motor_server.devices.abstract_motor import AbstractMotor
+from plico_motor.types.motor_status import MotorStatus
+
 
 GET_ID = "*idn?\r"
 READ_N = "pos?\r"
 WRITE_N = "pos=%d\r"
+
+class FilterWheelFatalException(Exception):
+    pass
 
 class FilterWheelException(Exception):
     pass
@@ -20,6 +25,29 @@ class SerialTimeoutException(Exception):
     def __init__(self, value=-1):
         print ("Missing response from serial after %i iterrations" % value)
 
+
+def _reconnect(f):
+    '''
+    Make sure that the function is executed
+    after connecting to the motor, and trigger
+    a reconnect in the next command if any error occurs.
+
+    Any communication problem will raise a FilterWheelException
+    '''
+    def func(self, *args, **kwargs):
+        try:
+            if not self.ser:
+                self.connect()
+            return f(self, *args, **kwargs)
+        except OSError:
+            self.disconnect()
+            raise FilterWheelFatalException('Error communicating with filter wheel. Will retry...')
+        except FilterWheelException:
+            raise
+
+    return func
+
+ 
 class FilterWheel(AbstractMotor):
     '''
     Manual: https://www.thorlabs.com/drawings/67124bd78341d22e-A3AF90CF-D9E9-9FC4-63EEF4724CA5DD84/FW102C-Manual.pdf
@@ -33,7 +61,7 @@ class FilterWheel(AbstractMotor):
         self.naxis = 1
         self.ser = None
         self._logger = Logger.of("FilterWheel")
-        self._last_commanded_position = []
+        self._last_commanded_position = None
 
     def _pollSerial(self):
         nw = 0
@@ -83,6 +111,7 @@ class FilterWheel(AbstractMotor):
         out = out_s.split('\r')[1]
         return out
 
+    @_reconnect
     def _get_pos(self):
         '''
         Returns
@@ -98,6 +127,7 @@ class FilterWheel(AbstractMotor):
         out = int(out_s.split()[1])
         return out
 
+    @_reconnect
     def _set_pos(self, n):
         '''
         Parameters
@@ -111,7 +141,7 @@ class FilterWheel(AbstractMotor):
             number of filter wheel position
         '''
         if n < 1 or n > 6:
-            raise BaseException()
+            raise FilterWheelException('Position %d is out of range (1-6)' % n)
         cmd = bytes(WRITE_N % n, 'utf-8')
         tmp = self.ser.write(cmd)
         nw = self._pollSerial()
@@ -130,18 +160,18 @@ class FilterWheel(AbstractMotor):
 
     @override
     def position(self, axis):
-        curr_pos = self._get_wl()
+        curr_pos = self._get_pos()
         self._logger.debug(
             'Current position = %d nm' % curr_pos)
         return curr_pos
 
     @override
     def steps_per_SI_unit(self, axis):
-        raise FilterWheelException('One step is equal to one filter position.')
+        return 1
 
     @override
     def was_homed(self, axis):
-        raise FilterWheelException('Home command is not supported.')
+        return True
 
     @override
     def type(self, axis):
@@ -149,11 +179,11 @@ class FilterWheel(AbstractMotor):
 
     @override
     def is_moving(self, axis):
-        raise FilterWheelException('Moving command is not supported.')
+        return False
 
     @override
     def last_commanded_position(self, axis):
-        return self._last_commanded_position[-1]
+        return self._last_commanded_position
 
     @override
     def naxes(self):
@@ -171,8 +201,8 @@ class FilterWheel(AbstractMotor):
     
     @override
     def move_to(self, axis, number_of_filter_position):
-        position = self._set_wl(number_of_filter_position)
-        self._last_commanded_position.append(position)
+        position = self._set_pos(number_of_filter_position)
+        self._last_commanded_position = position
         return
 
     @override

@@ -66,13 +66,14 @@ class Runner(BaseRunner):
 
     def _createFilterDevice(self, motorDeviceSection):
         name = self.configuration.deviceName(motorDeviceSection)
-        port = self.configuration.basePort(motorDeviceSection)
+        usb_port = self.configuration.getValue(
+            motorDeviceSection, 'usb_port')
         speed = self.configuration.getValue(
             motorDeviceSection, 'speed', getint=True)
         if name == 'TunableFilter':
-            self._motor = TunableFilter(name, port, speed)
+            self._motor = TunableFilter(name, usb_port, speed)
         elif name == 'FilterWheel':
-            self._motor = FilterWheel(name, port, speed)
+            self._motor = FilterWheel(name, usb_port, speed)
 
 
     def _replyPort(self):

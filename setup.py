@@ -81,6 +81,7 @@ setup(name=NAME,
           'console_scripts': [
               'plico_motor_server_1=plico_motor_server.scripts.controller_1:main',
               'plico_motor_server_2=plico_motor_server.scripts.controller_2:main',
+              'plico_motor_server_3=plico_motor_server.scripts.controller_3:main',
               'plico_motor_kill_all=plico_motor_server.scripts.kill_processes:main',
               'plico_motor_start=plico_motor_server.scripts.process_monitor:main',
               'plico_motor_stop=plico_motor_server.scripts.stop:main',
