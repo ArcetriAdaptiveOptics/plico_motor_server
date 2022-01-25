@@ -9,6 +9,7 @@ def main():
     processNames = [Constants.START_PROCESS_NAME,
                     Constants.SERVER_1_PROCESS_NAME,
                     Constants.SERVER_2_PROCESS_NAME,
+                    Constants.SERVER_3_PROCESS_NAME,
                     ]
 
     for each in processNames:

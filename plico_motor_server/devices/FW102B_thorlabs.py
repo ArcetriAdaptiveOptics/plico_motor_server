@@ -156,10 +156,22 @@ class FilterWheel(AbstractMotor):
 
     @override
     def name(self):
+        '''
+        Returns
+        -------
+        name: string
+            filter name
+        '''
         return self._name
 
     @override
     def position(self, axis):
+        '''
+        Returns
+        -------
+        curr_pos: int
+            output number position from filter
+        '''
         curr_pos = self._get_pos()
         self._logger.debug(
             'Current position = %d nm' % curr_pos)
@@ -175,6 +187,12 @@ class FilterWheel(AbstractMotor):
 
     @override
     def type(self, axis):
+        '''
+        Returns
+        -------
+        type: string
+             type of motor controller
+        '''
         return MotorStatus.TYPE_ROTARY
 
     @override
@@ -183,6 +201,12 @@ class FilterWheel(AbstractMotor):
 
     @override
     def last_commanded_position(self, axis):
+        '''
+        Returns
+        ------
+        last commanded position: int
+            last number commanded position
+        '''
         return self._last_commanded_position
 
     @override

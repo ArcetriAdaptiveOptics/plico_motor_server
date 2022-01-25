@@ -8,6 +8,7 @@ import serial
 from plico.utils.logger import Logger
 from plico.utils.decorator import override
 from plico_motor_server.devices.abstract_motor import AbstractMotor
+from plico_motor.types.motor_status import MotorStatus
 
 GET_ID = "*idn?\r"
 WRITE_WL = "WL=%5.3f\r"
@@ -15,12 +16,36 @@ READ_WL = "WL?\r"
 GET_STATUS = "ST?\r"
 GET_TEMPERATURE = 'TP?\r'
 
+class TunableFilterFatalException(Exception):
+    pass
+
 class TunableFilterException(Exception):
     pass
 
 class SerialTimeoutException(Exception):
     def __init__(self, value=-1):
         print ("Missing response from serial after %i iterrations" % value)
+
+def _reconnect(f):
+    '''
+    Make sure that the function is executed
+    after connecting to the motor, and trigger
+    a reconnect in the next command if any error occurs.
+
+    Any communication problem will raise a TunableFilterException
+    '''
+    def func(self, *args, **kwargs):
+        try:
+            if not self.ser:
+                self.connect()
+            return f(self, *args, **kwargs)
+        except OSError:
+            self.disconnect()
+            raise TunableFilterFatalException('Error communicating with tunable filter. Will retry...')
+        except TunableFilterException:
+            raise
+
+    return func
 
 class TunableFilter(AbstractMotor):
     '''
@@ -35,7 +60,7 @@ class TunableFilter(AbstractMotor):
         self.naxis = 1
         self.ser = None
         self._logger = Logger.of("TunableFilter")
-        self._last_commanded_position = []
+        self._last_commanded_position = None
 
     def _pollSerial(self):
         nw = 0
@@ -85,6 +110,7 @@ class TunableFilter(AbstractMotor):
         out = out_s.split('\r')[0]
         return out
 
+    @_reconnect
     def _get_wl(self):
         '''
         Returns
@@ -100,6 +126,7 @@ class TunableFilter(AbstractMotor):
         out = out_s.split('\r')[0]
         return out
 
+    @_reconnect
     def _set_wl(self, wl):
         '''
         Parameters
@@ -113,7 +140,7 @@ class TunableFilter(AbstractMotor):
             wavelength output from filter
         '''
         if wl < 420 or wl > 730:
-            raise BaseException('Wavelength out of range 420-730')
+            raise TunableFilterException('Wavelength out of range 420-730')
         cmd = bytes(WRITE_WL % wl, 'utf-8')
         tmp = self.ser.write(cmd)
         nw = self._pollSerial()
@@ -184,11 +211,11 @@ class TunableFilter(AbstractMotor):
 
     @override
     def steps_per_SI_unit(self, axis):
-        raise TunableFilterException('One step is equal to one nanometer.')
+        return 1
     
     @override
     def was_homed(self, axis):
-        raise TunableFilterException('Homed command is not supported.')
+        return True
     
     @override
     def type(self, axis):
@@ -202,7 +229,7 @@ class TunableFilter(AbstractMotor):
     
     @override
     def is_moving(self, axis):
-        raise TunableFilterException('Moving command is not supported.')
+        return False
 
     @override
     def last_commanded_position(self, axis):
@@ -210,9 +237,9 @@ class TunableFilter(AbstractMotor):
         Returns
         ------
         last commanded position: int
-            last set point in nm contained in last commanded position list
+            last commanded position in nm
         '''
-        return self._last_commanded_position[-1]
+        return self._last_commanded_position
 
     @override
     def naxes(self):
@@ -239,7 +266,7 @@ class TunableFilter(AbstractMotor):
             desired lambda position in nanometres
         '''
         absolute_position_in_nm = self._set_wl(absolute_position_in_nm)
-        self._last_commanded_position.append(absolute_position_in_nm)
+        self._last_commanded_position = absolute_position_in_nm
         return
 
     @override
