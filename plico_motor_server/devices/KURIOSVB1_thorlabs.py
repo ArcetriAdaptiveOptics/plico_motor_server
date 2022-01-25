@@ -124,7 +124,8 @@ class TunableFilter(AbstractMotor):
         out_b = self.ser.read(self.ser.inWaiting())
         out_s = out_b.decode('utf-8')
         out = out_s.split('\r')[0]
-        return out
+        out_number = float(out.split('=')[1])
+        return out_number
 
     @_reconnect
     def _set_wl(self, wl):
@@ -145,10 +146,10 @@ class TunableFilter(AbstractMotor):
         tmp = self.ser.write(cmd)
         nw = self._pollSerial()
         out_b = self.ser.read(self.ser.inWaiting())
-        #out_s = out_b.decode('utf-8')
+        out_s = out_b.decode('utf-8')
         #out = out_s.split('\r')[0]
-        out = self._get_wl()
-        return out
+        #out = self._get_wl()
+        return out_s
 
     def _get_status(self):
         '''
@@ -206,7 +207,7 @@ class TunableFilter(AbstractMotor):
         '''
         curr_pos = self._get_wl()
         self._logger.debug(
-            'Current position = %5.3f nm' % curr_pos)
+            'Current position = %s nm' % curr_pos)
         return curr_pos
 
     @override
