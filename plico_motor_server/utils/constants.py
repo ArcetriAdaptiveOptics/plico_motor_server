@@ -9,6 +9,7 @@ class Constants:
     SERVER_1_CONFIG_SECTION = 'motor1'
     SERVER_2_CONFIG_SECTION = 'motor2'
     SERVER_3_CONFIG_SECTION = 'motor3'
+    SERVER_4_CONFIG_SECTION = 'motor4'
 
     # TODO: must be the same of console_scripts in setup.py
     START_PROCESS_NAME = 'plico_motor_start'
@@ -17,4 +18,5 @@ class Constants:
     SERVER_1_PROCESS_NAME = 'plico_motor_server_1'
     SERVER_2_PROCESS_NAME = 'plico_motor_server_2'
     SERVER_3_PROCESS_NAME = 'plico_motor_server_3'
+    SERVER_4_PROCESS_NAME = 'plico_motor_server_4'
     FAKE_NEWFOCUS8742_PROCESS_NAME = 'plico_motor_fake_newfocus8742'
