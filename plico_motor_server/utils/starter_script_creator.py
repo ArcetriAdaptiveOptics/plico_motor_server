@@ -30,6 +30,18 @@ class StarterScriptCreator(StarterScriptCreatorBase):
             Constants.SERVER_2_CONFIG_SECTION
         )
         self._createAStarterScript(
+            os.path.join(self._binDir,
+                         Constants.SERVER_3_PROCESS_NAME),
+            psh.controllerStartUpScriptPath(),
+            Constants.SERVER_3_CONFIG_SECTION
+        )
+        self._createAStarterScript(
+            os.path.join(self._binDir,
+                         Constants.SERVER_4_PROCESS_NAME),
+            psh.controllerStartUpScriptPath(),
+            Constants.SERVER_4_CONFIG_SECTION
+        )
+        self._createAStarterScript(
             os.path.join(self._binDir, Constants.KILL_ALL_PROCESS_NAME),
             psh.killAllProcessesStartUpScriptPath(),
             'foo'
