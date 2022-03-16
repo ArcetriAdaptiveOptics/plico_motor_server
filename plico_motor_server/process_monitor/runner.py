@@ -95,6 +95,10 @@ class Runner(BaseRunner):
             Constants.SERVER_1_PROCESS_NAME)
         self._controller2 = self._spawnController(
             Constants.SERVER_2_PROCESS_NAME)
+        self._controller3 = self._spawnController(
+            Constants.SERVER_3_PROCESS_NAME)
+        self._controller4 = self._spawnController(
+            Constants.SERVER_4_PROCESS_NAME)
 
     def _runLoop(self):
         self._logRunning()

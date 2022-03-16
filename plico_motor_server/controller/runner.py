@@ -6,6 +6,7 @@ from plico_motor_server.devices.simulated_motor import \
 from plico_motor_server.devices.picomotor import Picomotor
 from plico_motor_server.devices.KURIOSVB1_thorlabs import TunableFilter
 from plico_motor_server.devices.FW102B_thorlabs import FilterWheel
+from plico_motor_server.devices.PI_motors import PI_E861
 from plico.utils.logger import Logger
 from plico.utils.control_loop import FaultTolerantControlLoop
 from plico.utils.decorator import override
@@ -32,6 +33,8 @@ class Runner(BaseRunner):
             self._createFilterDevice(motorDeviceSection)
         elif motorModel == 'FW102B_thorlabs':
             self._createFilterDevice(motorDeviceSection)
+        elif motorModel == 'PI_E861':
+            self._createPI_E861(motorDeviceSection)
         else:
             raise KeyError('Unsupported motor model %s' % motorModel)
 
@@ -75,6 +78,13 @@ class Runner(BaseRunner):
         elif name == 'FilterWheel':
             self._motor = FilterWheel(name, usb_port, speed)
 
+    def _createPI_E861(self, motorDeviceSection):
+        name = self.configuration.deviceName(motorDeviceSection)
+        usb_port = self.configuration.getValue(
+            motorDeviceSection, 'usb_port')
+        speed = self.configuration.getValue(
+            motorDeviceSection, 'speed', getint=True)
+        self._motor = PI_E861(name, usb_port, speed)
 
     def _replyPort(self):
         return self.configuration.replyPort(self.getConfigurationSection())
