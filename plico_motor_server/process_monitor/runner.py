@@ -93,7 +93,7 @@ class Runner(BaseRunner):
             cmd = [os.path.join(self._binFolder, name)]
         else:
             cmd = [name]
-        cmd += [section]
+        cmd += [self._configuration._filename, section]
         self._logger.notice("MirrorController cmd is %s" % cmd)
         mirrorController = subprocess.Popen(cmd)
         self._processes.append(mirrorController)
