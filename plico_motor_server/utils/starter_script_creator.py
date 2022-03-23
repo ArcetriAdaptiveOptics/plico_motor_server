@@ -9,7 +9,7 @@ class StarterScriptCreator(StarterScriptCreatorBase):
     def __init__(self):
         StarterScriptCreatorBase.__init__(self)
 
-    def installExecutables(self, numControllers):
+    def installExecutables(self):
         psh = ProcessStartUpHelper()
 
         self._createAStarterScript(
@@ -17,12 +17,11 @@ class StarterScriptCreator(StarterScriptCreatorBase):
             psh.processProcessMonitorStartUpScriptPath(),
             Constants.PROCESS_MONITOR_CONFIG_SECTION
         )
-        for n in range(1,numControllers+1):
-            self._createAStarterScript(
-                os.path.join(self._binDir, Constants.SERVER_PROCESS_NAME),
-                psh.controllerStartUpScriptPath(),
-                '$1'
-            )
+        self._createAStarterScript(
+            os.path.join(self._binDir, Constants.SERVER_PROCESS_NAME),
+            psh.controllerStartUpScriptPath(),
+            '$2'  # Section name is a bash parameter
+        )
         self._createAStarterScript(
             os.path.join(self._binDir, Constants.KILL_ALL_PROCESS_NAME),
             psh.killAllProcessesStartUpScriptPath(),

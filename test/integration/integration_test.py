@@ -90,9 +90,8 @@ class IntegrationTest(unittest.TestCase):
         ssc = StarterScriptCreator()
         ssc.setInstallationBinDir(self.BIN_DIR)
         ssc.setPythonPath(self.SOURCE_DIR)
-        ssc.setConfigFileDestination(self.CONF_FILE)
-        numMotors = len(self.configuration.numberedSectionList(Constants.SERVER_CONFIG_SECTION_PREFIX))
-        ssc.installExecutables(numMotors)
+        ssc.setConfigFileDestination('$1') # Allow config file to be a script parameter
+        ssc.installExecutables()
 
     def _startProcesses(self):
         psh = ProcessStartUpHelper()
