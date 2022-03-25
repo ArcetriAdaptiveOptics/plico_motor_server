@@ -9,8 +9,7 @@ import psutil
 from plico.utils.base_runner import BaseRunner
 from plico.utils.decorator import override
 from plico.utils.logger import Logger
-from plico_motor_server.utils.process_startup_helper import \
-    ProcessStartUpHelper
+from plico.types.server_info import ServerInfo
 from plico_motor_server.utils.constants import Constants
 
 
@@ -24,7 +23,6 @@ class Runner(BaseRunner):
         self._logger = None
         self._processes = []
         self._timeToDie = False
-        self._psh = ProcessStartUpHelper()
 
     def _determineInstalledBinaryDir(self):
         try:
@@ -76,11 +74,23 @@ class Runner(BaseRunner):
 
         self._logger.notice("terminated all")
 
-    def _spawnController(self, name):
+    def serverInfo(self):
+        sections = self._configuration.numberedSectionList(prefix='motor')
+        info = []
+        for section in sections:
+            name = self._configuration.getValue(section, 'name')
+            host = self._configuration.getValue(section, 'host')
+            port = self._configuration.getValue(section, 'port')
+            controller_info = ServerInfo(name, 0, host, port)
+            info.append(controller_info)
+        return info
+
+    def _spawnController(self, name, section):
         if self._binFolder:
             cmd = [os.path.join(self._binFolder, name)]
         else:
             cmd = [name]
+        cmd += [self._configuration._filename, section]
         self._logger.notice("MirrorController cmd is %s" % cmd)
         mirrorController = subprocess.Popen(cmd)
         self._processes.append(mirrorController)
@@ -91,19 +101,20 @@ class Runner(BaseRunner):
         self._setSignalIntHandler()
         self._logger.notice("Creating controller processes")
         self._determineInstalledBinaryDir()
-        self._controller1 = self._spawnController(
-            Constants.SERVER_1_PROCESS_NAME)
-        self._controller2 = self._spawnController(
-            Constants.SERVER_2_PROCESS_NAME)
-        self._controller3 = self._spawnController(
-            Constants.SERVER_3_PROCESS_NAME)
-        self._controller4 = self._spawnController(
-            Constants.SERVER_4_PROCESS_NAME)
+        sections = self._configuration.numberedSectionList(prefix='motor')
+        for section in sections:
+            self._spawnController(Constants.SERVER_PROCESS_NAME, section)
+        self._replySocket = self.rpc().replySocket(Constants.PROCESS_MONITOR_PORT)
+
+    def _handleRequest(self):
+        '''Handler for serverInfo'''
+        self.rpc().handleRequest(self, self._replySocket, multi=True)
 
     def _runLoop(self):
         self._logRunning()
         while self._timeToDie is False:
-            time.sleep(1)
+            self._handleRequest()
+            time.sleep(0.1)
         self._terminateAll()
 
     @override

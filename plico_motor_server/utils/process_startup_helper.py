@@ -8,8 +8,8 @@ class ProcessStartUpHelper(object):
 
     def controllerStartUpScriptPath(self):
         return os.path.join(self._moduleRoot,
-                            'controller',
-                            'plico_motor_run_controller.py')
+                            'scripts',
+                            'controller.py')
 
     def killAllProcessesStartUpScriptPath(self):
         return os.path.join(self._moduleRoot,
