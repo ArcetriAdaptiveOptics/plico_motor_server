@@ -10,8 +10,6 @@ from plico.utils.base_runner import BaseRunner
 from plico.utils.decorator import override
 from plico.utils.logger import Logger
 from plico.types.server_info import ServerInfo
-from plico_motor_server.utils.process_startup_helper import \
-    ProcessStartUpHelper
 from plico_motor_server.utils.constants import Constants
 
 
@@ -25,7 +23,6 @@ class Runner(BaseRunner):
         self._logger = None
         self._processes = []
         self._timeToDie = False
-        self._psh = ProcessStartUpHelper()
 
     def _determineInstalledBinaryDir(self):
         try:
@@ -117,6 +114,7 @@ class Runner(BaseRunner):
         self._logRunning()
         while self._timeToDie is False:
             self._handleRequest()
+            time.sleep(0.1)
         self._terminateAll()
 
     @override
