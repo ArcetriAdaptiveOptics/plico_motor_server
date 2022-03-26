@@ -7,6 +7,7 @@ import time
 import serial
 from plico.utils.logger import Logger
 from plico.utils.decorator import override
+from plico.utils.reconnect import Reconnecting, reconnect
 from plico_motor_server.devices.abstract_motor import AbstractMotor
 from plico_motor.types.motor_status import MotorStatus
 
@@ -15,53 +16,34 @@ GET_ID = "*idn?\r"
 READ_N = "pos?\r"
 WRITE_N = "pos=%d\r"
 
-class FilterWheelFatalException(Exception):
-    pass
 
 class FilterWheelException(Exception):
     pass
+
 
 class SerialTimeoutException(Exception):
     def __init__(self, value=-1):
         print ("Missing response from serial after %i iterrations" % value)
 
 
-def _reconnect(f):
-    '''
-    Make sure that the function is executed
-    after connecting to the motor, and trigger
-    a reconnect in the next command if any error occurs.
-
-    Any communication problem will raise a FilterWheelException
-    '''
-    def func(self, *args, **kwargs):
-        try:
-            if not self.ser:
-                self.connect()
-            return f(self, *args, **kwargs)
-        except OSError:
-            self.disconnect()
-            raise FilterWheelFatalException('Error communicating with filter wheel. Will retry...')
-        except FilterWheelException:
-            raise
-
-    return func
-
- 
-class FilterWheel(AbstractMotor):
+class FilterWheel(AbstractMotor, Reconnecting):
     '''
     Manual: https://www.thorlabs.com/drawings/67124bd78341d22e-A3AF90CF-D9E9-9FC4-63EEF4724CA5DD84/FW102C-Manual.pdf
     '''
-
-    def __init__(self, name, port, speed):
+    def __init__(self, name, serial_or_usb, speed):
         """The constructor """
         self._name = name
-        self.port = port
+        self.serial_or_usb = serial_or_usb
         self.speed = speed
         self.naxis = 1
         self.ser = None
         self._logger = Logger.of("FilterWheel")
         self._last_commanded_position = None
+        Reconnecting.__init__(self,
+            self.connect,
+            self.disconnect,
+            [SerialTimeoutException],
+        )
 
     def _pollSerial(self):
         nw = 0
@@ -82,7 +64,8 @@ class FilterWheel(AbstractMotor):
     def connect(self):
         if self.ser is None:
             self._logger.notice('Connecting to filter wheel at %s' % self.port)
-            self.ser = serial.Serial(self.port, self.speed,
+            port = serial_or_usb.port_name()
+            self.ser = serial.Serial(port, self.speed,
                                      bytesize=serial.EIGHTBITS,
                                      parity=serial.PARITY_NONE,
                                      stopbits=serial.STOPBITS_ONE)
@@ -96,6 +79,7 @@ class FilterWheel(AbstractMotor):
             self.ser.close()
             self.ser = None
 
+    @reconnect
     def get_id(self):
         '''
         Returns
@@ -111,7 +95,7 @@ class FilterWheel(AbstractMotor):
         out = out_s.split('\r')[1]
         return out
 
-    @_reconnect
+    @reconnect
     def _get_pos(self):
         '''
         Returns
@@ -127,7 +111,7 @@ class FilterWheel(AbstractMotor):
         out = int(out_s.split()[1])
         return out
 
-    @_reconnect
+    @reconnect
     def _set_pos(self, n):
         '''
         Parameters

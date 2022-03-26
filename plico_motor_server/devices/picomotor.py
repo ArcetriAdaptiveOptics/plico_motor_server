@@ -2,6 +2,7 @@ import socket
 
 from plico.utils.logger import Logger
 from plico.utils.decorator import override
+from plico.utils.reconnect import Reconnecting, reconnect
 from plico_motor_server.devices.abstract_motor import AbstractMotor
 from plico_motor.types.motor_status import MotorStatus
 
@@ -33,28 +34,7 @@ class MyTcpSocket(socket.socket):
         return msg
 
 
-def _reconnect(f):
-    '''
-    Make sure that the function is executed
-    after connecting to the motor, and trigger
-    a reconnect in the next command if any error occurs.
-
-    Any communication problem will raise a PicomotorException
-    '''
-
-    def func(self, *args, **kwargs):
-        try:
-            if not self._sock:
-                self._connect()
-            return f(self, *args, **kwargs)
-        except (socket.timeout, OSError):
-            self._sock = None
-            raise PicomotorException
-
-    return func
-
-
-class Picomotor(AbstractMotor):
+class Picomotor(AbstractMotor, Reconnecting):
     '''Picomotor class.
     '''
 
@@ -79,6 +59,11 @@ class Picomotor(AbstractMotor):
         self._has_been_homed = [False] * naxis
         self._last_commanded_position = [0] * naxis
         self._sock = None
+        Reconnecting.__init__(self,
+            self.connect,
+            self.disconnect,
+            [socket.timeout],
+        )
 
     def _connect(self):
         self._logger.notice('Connecting to picomotor at %s' % self.ipaddr)
@@ -110,7 +95,7 @@ class Picomotor(AbstractMotor):
         assert ans[-2:] == b'\r\n'
         return ans.strip()
 
-    @_reconnect
+    @reconnect
     def _moveby(self, axis, steps):
         self._logger.notice('Moving axis %d by %d steps' % (axis, steps))
         self._cmd(axis, 'PR', steps)
@@ -123,7 +108,7 @@ class Picomotor(AbstractMotor):
     def home(self, axis):
         raise PicomotorException('Home command is not supported')
 
-    @_reconnect
+    @reconnect
     @override
     def position(self, axis):
         curr_pos = int(self._ask(axis, 'PA?'))

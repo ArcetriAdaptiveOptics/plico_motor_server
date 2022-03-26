@@ -7,6 +7,7 @@ import time
 import serial
 from plico.utils.logger import Logger
 from plico.utils.decorator import override
+from plico.utils.reconnect import Reconnecting, reconnect
 from plico_motor_server.devices.abstract_motor import AbstractMotor
 from plico_motor.types.motor_status import MotorStatus
 
@@ -16,51 +17,35 @@ READ_WL = "WL?\r"
 GET_STATUS = "ST?\r"
 GET_TEMPERATURE = 'TP?\r'
 
-class TunableFilterFatalException(Exception):
-    pass
 
 class TunableFilterException(Exception):
     pass
+
 
 class SerialTimeoutException(Exception):
     def __init__(self, value=-1):
         print ("Missing response from serial after %i iterrations" % value)
 
-def _reconnect(f):
-    '''
-    Make sure that the function is executed
-    after connecting to the motor, and trigger
-    a reconnect in the next command if any error occurs.
 
-    Any communication problem will raise a TunableFilterException
-    '''
-    def func(self, *args, **kwargs):
-        try:
-            if not self.ser:
-                self.connect()
-            return f(self, *args, **kwargs)
-        except OSError:
-            self.disconnect()
-            raise TunableFilterFatalException('Error communicating with tunable filter. Will retry...')
-        except TunableFilterException:
-            raise
-
-    return func
-
-class TunableFilter(AbstractMotor):
+class TunableFilter(AbstractMotor, Reconnecting):
     '''
     Manual: https://www.thorlabs.com/drawings/67124bd78341d22e-A3AF90CF-D9E9-9FC4-63EEF4724CA5DD84/KURIOS-VB1-Manual.pdf
     '''
 
-    def __init__(self, name, port, speed):
+    def __init__(self, name, serial_or_usb, speed):
         """The constructor """
         self._name = name
-        self.port = port
+        self.serial_or_usb = serial_or_usb
         self.speed = speed
         self.naxis = 1
         self.ser = None
         self._logger = Logger.of("TunableFilter")
         self._last_commanded_position = None
+        Reconnecting.__init__(self,
+            self.connect,
+            self.disconnect,
+            [SerialTimeoutException],
+        )
 
     def _pollSerial(self):
         nw = 0
@@ -81,7 +66,8 @@ class TunableFilter(AbstractMotor):
     def connect(self):
         if self.ser is None:
             self._logger.notice('Connecting to tunable filter at %s' % self.port)
-            self.ser = serial.Serial(self.port, self.speed,
+            port = serial_or_usb.port_name()
+            self.ser = serial.Serial(port, self.speed,
                                      bytesize=serial.EIGHTBITS,
                                      parity=serial.PARITY_NONE,
                                      stopbits=serial.STOPBITS_ONE)
@@ -95,6 +81,7 @@ class TunableFilter(AbstractMotor):
             self.ser.close()
             self.ser = None
 
+    @reconnect
     def get_id(self):
         '''
         Returns
@@ -110,7 +97,7 @@ class TunableFilter(AbstractMotor):
         out = out_s.split('\r')[0]
         return out
 
-    @_reconnect
+    @reconnect
     def _get_wl(self):
         '''
         Returns
@@ -127,7 +114,7 @@ class TunableFilter(AbstractMotor):
         out_number = float(out.split('=')[1])
         return out_number
 
-    @_reconnect
+    @reconnect
     def _set_wl(self, wl):
         '''
         Parameters
@@ -151,6 +138,7 @@ class TunableFilter(AbstractMotor):
         #out = self._get_wl()
         return out_s
 
+    @reconnect
     def _get_status(self):
         '''
         Returns
@@ -169,6 +157,7 @@ class TunableFilter(AbstractMotor):
         out = out_s.split()[0]
         return out
     
+    @reconnect
     def get_temperature(self):
         '''
         Returns
