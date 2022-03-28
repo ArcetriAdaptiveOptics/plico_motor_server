@@ -65,8 +65,9 @@ class TunableFilter(AbstractMotor, Reconnecting):
 
     def connect(self):
         if self.ser is None:
-            self._logger.notice('Connecting to tunable filter at %s' % self.port)
-            port = serial_or_usb.port_name()
+            time.sleep(1) # Slow down reconnect loops
+            port = self.serial_or_usb.port_name()
+            self._logger.notice('Connecting to tunable filter at %s' % port)
             self.ser = serial.Serial(port, self.speed,
                                      bytesize=serial.EIGHTBITS,
                                      parity=serial.PARITY_NONE,

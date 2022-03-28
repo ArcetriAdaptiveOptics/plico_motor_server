@@ -69,8 +69,8 @@ class Runner(BaseRunner):
 
     def _createFilterDevice(self, motorDeviceSection):
         name = self.configuration.deviceName(motorDeviceSection)
-        serial_or_usb = SerialOrUsbConnection.fromConfiguration(
-                configuration,
+        serial_or_usb = SerialOrUSBConnection.fromConfiguration(
+                self.configuration,
                 motorDeviceSection)
         speed = self.configuration.getValue(
             motorDeviceSection, 'speed', getint=True)
@@ -81,8 +81,8 @@ class Runner(BaseRunner):
 
     def _createPI_E861(self, motorDeviceSection):
         name = self.configuration.deviceName(motorDeviceSection)
-        serial_or_usb = SerialOrUsbConnection.fromConfiguration(
-                configuration,
+        serial_or_usb = SerialOrUSBConnection.fromConfiguration(
+                self.configuration,
                 motorDeviceSection)
         speed = self.configuration.getValue(
             motorDeviceSection, 'speed', getint=True)
