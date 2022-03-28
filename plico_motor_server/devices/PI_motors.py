@@ -24,10 +24,10 @@ class PIGCS_Motor(AbstractMotor, Reconnecting):
     an instance of this class is initialized.
     '''
 
-    def __init__(self, name, usb_or_serial, speed):
+    def __init__(self, name, serial_or_usb, speed):
         from pipython import GCSDevice # Not used here, but let's fail now instead of later
         self._name = name
-        self.usb_or_serial = usb_or_serial
+        self.serial_or_usb = serial_or_usb
         self.speed = speed
         self.naxis = 1
         self.gcs = None
@@ -45,9 +45,10 @@ class PIGCS_Motor(AbstractMotor, Reconnecting):
     def connect(self):
         if self.gcs is None:
             from pipython import GCSDevice
-            self._logger.notice('Connecting to GCS device at %s' % self.port)
+            port = self.serial_or_usb.port_name()
+            self._logger.notice('Connecting to GCS device at %s' % port)
             self.gcs = GCSDevice()
-            self.gcs.ConnectRS232(self.port, self.speed)
+            self.gcs.ConnectRS232(port, self.speed)
         else:
             print ("Already connected")
         refdict = self.gcs.qFRF()

@@ -7,6 +7,7 @@ from plico_motor_server.devices.simulated_motor import \
 from plico_motor_server.devices.KURIOSVB1_thorlabs import TunableFilter
 from plico_motor_server.devices.FW102B_thorlabs import FilterWheel
 from plico_motor_server.devices.PI_motors import PI_E861
+from plico_motor_server.devices.picomotor import Picomotor
 from plico.utils.logger import Logger
 from plico.utils.control_loop import FaultTolerantControlLoop
 from plico.utils.decorator import override

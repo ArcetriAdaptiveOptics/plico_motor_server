@@ -65,11 +65,14 @@ class Picomotor(AbstractMotor, Reconnecting):
             [socket.timeout],
         )
 
-    def _connect(self):
+    def connect(self):
         self._logger.notice('Connecting to picomotor at %s' % self.ipaddr)
         self._sock = MyTcpSocket(self.verbose)
         self._sock.settimeout(self.timeout)
         self._sock.connect((self.ipaddr, self.port))
+
+    def disconnect(self):
+        self._sock.close()
 
     @override
     def naxes(self):
