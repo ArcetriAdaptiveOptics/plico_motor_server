@@ -98,7 +98,7 @@ class Runner(BaseRunner):
         libFolder = self.configuration.getValue(mirrorDeviceSection,
                                                 'lib_folder')
         sys.path.append(libFolder)
-        import pyximc
+        #import pyximc
         self._motor = StandaStage(name, usb_port, speed)
         self._logger.notice("Standa device %s created" % name)
 

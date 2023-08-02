@@ -16,14 +16,13 @@ from plico.utils.decorator import override
 from plico_motor.types.motor_status import MotorStatus
 from plico.utils.logger import Logger
 
-
 # For correct usage of the library libximc,
 # you need to add the file pyximc.py wrapper with the structures of the library to python path.
 # ximc_dir = '/home/labot/Downloads/ximc-2.13.6/ximc/'
 # ximc_package_dir = os.path.join(ximc_dir, "crossplatform", "wrappers", "python") # Formation of the directory name with python dependencies.
 # sys.path.append(ximc_package_dir)  # add pyximc.py wrapper to python path
 #
-# import pyximc
+import pyximc
 
 class StandaStageException(Exception):
     pass
@@ -35,10 +34,9 @@ class StandaStage(AbstractMotor):
     '''
     
     def __init__(self, name, usb_port_name, speed):
-        #open_name = b'xi-com:///dev/ximc/000081B5'
         self._open_name = usb_port_name
         self._deviceId = pyximc.lib.open_device(self._open_name)
-        self._logger = Logger.of("Standa Stage %s", self._deviceId)
+        self._logger = Logger.of("Standa Stage %s" %self._deviceId)
         self._name = name
         self.naxis = 1
         self.microstep_mode_frac = self.get_microstep_mode()
