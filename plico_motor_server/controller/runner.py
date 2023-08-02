@@ -7,6 +7,7 @@ from plico_motor_server.devices.picomotor import Picomotor
 from plico_motor_server.devices.KURIOSVB1_thorlabs import TunableFilter
 from plico_motor_server.devices.FW102B_thorlabs import FilterWheel
 from plico_motor_server.devices.PI_motors import PI_E861
+from plico_motor_server.devices.standa_motors import StandaStage
 from plico.utils.logger import Logger
 from plico.utils.control_loop import FaultTolerantControlLoop
 from plico.utils.decorator import override
@@ -35,6 +36,8 @@ class Runner(BaseRunner):
             self._createFilterDevice(motorDeviceSection)
         elif motorModel == 'PI_E861':
             self._createPI_E861(motorDeviceSection)
+        elif motorModel == '8SMC5-USB 8MT30-50' or '8SMC5-USB 8MBM24-2-2':
+            self._createStadaMotor(motorDeviceSection)
         else:
             raise KeyError('Unsupported motor model %s' % motorModel)
 
@@ -85,6 +88,19 @@ class Runner(BaseRunner):
         speed = self.configuration.getValue(
             motorDeviceSection, 'speed', getint=True)
         self._motor = PI_E861(name, usb_port, speed)
+
+    def _createStadaMotor(self, motorDeviceSection):
+        name = self.configuration.deviceName(motorDeviceSection)
+        usb_port = self.configuration.getValue(
+            motorDeviceSection, 'usb_port')
+        speed = self.configuration.getValue(
+            motorDeviceSection, 'speed', getint=True)
+        libFolder = self.configuration.getValue(mirrorDeviceSection,
+                                                'lib_folder')
+        sys.path.append(libFolder)
+        import pyximc
+        self._motor = StandaStage(name, usb_port, speed)
+        self._logger.notice("Standa device %s created" % name)
 
     def _replyPort(self):
         return self.configuration.replyPort(self.getConfigurationSection())
