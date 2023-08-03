@@ -16,13 +16,8 @@ from plico.utils.decorator import override
 from plico_motor.types.motor_status import MotorStatus
 from plico.utils.logger import Logger
 
-# For correct usage of the library libximc,
-# you need to add the file pyximc.py wrapper with the structures of the library to python path.
-# ximc_dir = '/home/labot/Downloads/ximc-2.13.6/ximc/'
-# ximc_package_dir = os.path.join(ximc_dir, "crossplatform", "wrappers", "python") # Formation of the directory name with python dependencies.
-# sys.path.append(ximc_package_dir)  # add pyximc.py wrapper to python path
-#
-import pyximc
+import libximc as pyximc
+from ctypes import c_int, byref
 
 class StandaStageException(Exception):
     pass
@@ -46,6 +41,8 @@ class StandaStage(AbstractMotor):
         self.decel = self.get_deceleration()
         self._last_commanded_position = None
 
+    def _close(self):
+        pyximc.lib.close_device(byref(c_int(self._deviceId)))
 
     def get_device_info(self):
         ''' Some informations
@@ -194,6 +191,18 @@ class StandaStage(AbstractMotor):
         elif result == pyximc.Result.ValueError:
             raise StandaStageException('Value Error: invalid range')
 
+    def _steps2mm(self, step, ustep):
+        mmstep = step/self.step_per_rev *0.25
+        mmustep = ustep/self.microstep_mode_frac/self.step_per_rev *0.25
+        pos = mmstep + mmustep
+        return pos
+    
+    def _mm2steps(self, mm):
+        aa = mm/.25*self.step_per_rev 
+        steps = int(aa)
+        usteps = int((aa - steps)*self.microstep_mode_frac)
+        return steps, usteps
+
 
 ### Per classe astratta ###
     @override
@@ -211,21 +220,18 @@ class StandaStage(AbstractMotor):
         '''
         Returns
         -------
-        n_step: int [step related to step_per_rev]
-                number of full step of the motor
-        n_ustep: int [step related to microstep_mode_frac]
-                number of step subdivision of the motor
+        n_ustep: number of microsteps
         '''
-        curr_pos = self._get_position()
+        step, ustep = self._get_position()
         self._logger.debug(
-            'Current position = %s nm' % curr_pos)
-        return curr_pos
+            'Current position (step, ustep) = %d, %d' % (step, ustep))
+        return step*self.microstep_mode_frac + ustep
 
     @override
     def steps_per_SI_unit(self, axis):
-        ''' da rivedere
+        ''' Number of steps/m
         '''
-        return 1
+        return self.step_per_rev * self.microstep_mode_frac /0.25
 
     @override
     def was_homed(self, axis):
@@ -239,7 +245,7 @@ class StandaStage(AbstractMotor):
         type: string
              type of motor controller
         '''
-        return MotorStatus.TYPE_ROTARY
+        return MotorStatus.TYPE_LINEAR
 
     @override
     def is_moving(self, axis):
@@ -269,25 +275,24 @@ class StandaStage(AbstractMotor):
     def home(self, axis):
         ''' Different from pyximc.lib.command_home() 
         '''
-        self.move_to(0, 0)
+        self.move_to(axis, 0)
     
     @override
-    def move_to(self, axis, pos, upos):
+    def move_to(self, axis, upos):
         '''
         Parameters
         ----------
-            pos: int
-                absolute position for the motor
             upos: int
-                absolute position of step subdivision for the motor (Microstep size and the range of valid values
-                for this field depend on selected step division mode)
+                absolute position in microsteps
         '''
-        result = pyximc.lib.command_move(self._deviceId, pos, upos)
+        step = upos // self.microstep_mode_frac
+        ustep = upos - step * self.microstep_mode_frac
+        result = pyximc.lib.command_move(self._deviceId, step, ustep)
         self._check_result(result)
         self._wait_for_stop()
-        n_step, n_ustep = self.get_position()
-        self._last_commanded_position = np.array([n_step, n_ustep])
+        n_step, n_ustep = self._get_position()
         print("Position: {0} steps, {1} microsteps".format(n_step, n_ustep))
+        self._last_commanded_position = upos
 
     @override
     def stop(self, axis):
@@ -295,12 +300,11 @@ class StandaStage(AbstractMotor):
 
     @override
     def deinitialize(self, axis):
-        raise FilterWheelException('Deinitialize command is not supported.')
-
-
+        raise StandaStageException('Deinitialize command is not supported.')
 
 
 def search_devices():
+    ximc_dir = '/home/labot/Downloads/ximc-2.13.6/ximc/'
     result = pyximc.lib.set_bindy_key(os.path.join(ximc_dir, "win32", "keyfile.sqlite").encode("utf-8"))
     if result != pyximc.Result.Ok:
         pyximc.lib.set_bindy_key("keyfile.sqlite".encode("utf-8")) # Search for the key file in the current directory.

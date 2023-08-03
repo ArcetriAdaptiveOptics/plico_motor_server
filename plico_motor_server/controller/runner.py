@@ -37,7 +37,7 @@ class Runner(BaseRunner):
         elif motorModel == 'PI_E861':
             self._createPI_E861(motorDeviceSection)
         elif motorModel == '8SMC5-USB 8MT30-50' or '8SMC5-USB 8MBM24-2-2':
-            self._createStadaMotor(motorDeviceSection)
+            self._createStandaMotor(motorDeviceSection)
         else:
             raise KeyError('Unsupported motor model %s' % motorModel)
 
@@ -89,17 +89,14 @@ class Runner(BaseRunner):
             motorDeviceSection, 'speed', getint=True)
         self._motor = PI_E861(name, usb_port, speed)
 
-    def _createStadaMotor(self, motorDeviceSection):
+    def _createStandaMotor(self, motorDeviceSection):
         name = self.configuration.deviceName(motorDeviceSection)
         usb_port = self.configuration.getValue(
             motorDeviceSection, 'usb_port')
         speed = self.configuration.getValue(
             motorDeviceSection, 'speed', getint=True)
-        libFolder = self.configuration.getValue(mirrorDeviceSection,
-                                                'lib_folder')
-        sys.path.append(libFolder)
-        #import pyximc
-        self._motor = StandaStage(name, usb_port, speed)
+        print(name, bytes(usb_port, 'ascii'))
+        self._motor = StandaStage(name, bytes(usb_port, 'ascii'), speed)
         self._logger.notice("Standa device %s created" % name)
 
     def _replyPort(self):
