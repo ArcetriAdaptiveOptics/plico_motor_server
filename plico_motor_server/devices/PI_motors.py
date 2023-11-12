@@ -14,14 +14,16 @@ from plico_motor.types.motor_status import MotorStatus
 class GCSException(Exception):
     pass
 
+
 def _reconnect(f):
     '''
     Make sure that the function is executed
     after connecting to the motor, and trigger
     a reconnect in the next command if any error occurs.
 
-    Any communication problem will raise a FilterWheelException
+    Any communication problem will raise a GCSException
     '''
+
     def func(self, *args, **kwargs):
         try:
             if not self.gcs:
@@ -29,13 +31,14 @@ def _reconnect(f):
             return f(self, *args, **kwargs)
         except OSError:
             self.disconnect()
-            raise GCSException('Error communicating with PI controller. Will retry...')
+            raise GCSException(
+                'Error communicating with PI controller. Will retry...')
         except GCSException:
             raise
 
     return func
 
- 
+
 class PIGCS_Motor(AbstractMotor):
     '''
     Motor using the PI GCS communication protocol with a serial or USB connection.
@@ -45,7 +48,7 @@ class PIGCS_Motor(AbstractMotor):
     '''
 
     def __init__(self, name, port, speed):
-        from pipython import GCSDevice # Not used here, but let's fail now instead of later
+        from pipython import GCSDevice  # Not used here, but let's fail now instead of later
         self._name = name
         self.port = port
         self.speed = speed
@@ -61,14 +64,14 @@ class PIGCS_Motor(AbstractMotor):
     def connect(self):
         if self.gcs is None:
             from pipython import GCSDevice
-            self._logger.notice('Connecting to GCS device at %s' % self.port)
+            self._logger.notice('Connecting to GCS device at port %s' % self.port)
             self.gcs = GCSDevice()
             self.gcs.ConnectRS232(self.port, self.speed)
         else:
-            print ("Already connected")
+            self._logger.notice("Already connected to GCS device at port %s" % self.port)
         refdict = self.gcs.qFRF()
         for n in range(self.naxis):
-            self.referenced[n] = refdict['%d' % (n+1,)]
+            self.referenced[n] = refdict['%d' % (n + 1,)]
 
     def disconnect(self):
         if self.gcs is not None:
@@ -85,7 +88,7 @@ class PIGCS_Motor(AbstractMotor):
 
     @override
     def home(self, axis):
-        self.referenced[axis-1] = False
+        self.referenced[axis - 1] = False
         self.gcs.FRF(axis)
         now = time.time()
         while True:
@@ -96,7 +99,7 @@ class PIGCS_Motor(AbstractMotor):
                 break
         if self.use_servo:
             self.gcs.SVO(axis, 1)
-        self.referenced[axis-1] = True
+        self.referenced[axis - 1] = True
 
     @_reconnect
     @override
@@ -123,7 +126,7 @@ class PIGCS_Motor(AbstractMotor):
 
     @override
     def was_homed(self, axis):
-        return self.referenced[axis-1]
+        return self.referenced[axis - 1]
 
     @override
     def type(self, axis):
@@ -145,6 +148,7 @@ class PI_E861(PIGCS_Motor):
     This class sets the "use_servo" flag to True in order
     to enable the servo loop after initialization.
     '''
+
     def __init__(self, name, port, speed):
         super().__init__(name, port, speed)
         self.use_servo = True
@@ -152,4 +156,3 @@ class PI_E861(PIGCS_Motor):
 
     def steps_per_SI_unit(self, axis):
         return 1e9
-
