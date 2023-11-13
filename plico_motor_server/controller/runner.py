@@ -3,11 +3,6 @@ import time
 from plico.utils.base_runner import BaseRunner
 from plico_motor_server.devices.simulated_motor import \
     SimulatedMotor
-from plico_motor_server.devices.picomotor import Picomotor
-from plico_motor_server.devices.KURIOSVB1_thorlabs import TunableFilter
-from plico_motor_server.devices.FW102B_thorlabs import FilterWheel
-from plico_motor_server.devices.PI_motors import PI_E861
-from plico_motor_server.devices.standa_motors import StandaStage
 from plico.utils.logger import Logger
 from plico.utils.control_loop import FaultTolerantControlLoop
 from plico.utils.decorator import override
@@ -46,6 +41,7 @@ class Runner(BaseRunner):
         self._motor = SimulatedMotor(motorName)
 
     def _createPicomotor(self, motorDeviceSection):
+        from plico_motor_server.devices.picomotor import Picomotor
         name = self.configuration.deviceName(motorDeviceSection)
         ipaddr = self.configuration.getValue(motorDeviceSection, 'ip_address')
         naxis = self.configuration.getValue(
@@ -77,11 +73,14 @@ class Runner(BaseRunner):
         speed = self.configuration.getValue(
             motorDeviceSection, 'speed', getint=True)
         if name == 'TunableFilter':
+            from plico_motor_server.devices.KURIOSVB1_thorlabs import TunableFilter
             self._motor = TunableFilter(name, usb_port, speed)
         elif name == 'FilterWheel':
+            from plico_motor_server.devices.FW102B_thorlabs import FilterWheel
             self._motor = FilterWheel(name, usb_port, speed)
 
     def _createPI_E861(self, motorDeviceSection):
+        from plico_motor_server.devices.PI_motors import PI_E861
         name = self.configuration.deviceName(motorDeviceSection)
         usb_port = self.configuration.getValue(
             motorDeviceSection, 'usb_port')
@@ -90,6 +89,7 @@ class Runner(BaseRunner):
         self._motor = PI_E861(name, usb_port, speed)
 
     def _createStandaMotor(self, motorDeviceSection):
+        from plico_motor_server.devices.standa_motors import StandaStage
         name = self.configuration.deviceName(motorDeviceSection)
         usb_port = self.configuration.getValue(
             motorDeviceSection, 'usb_port')
