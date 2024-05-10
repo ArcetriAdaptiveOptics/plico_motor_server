@@ -17,6 +17,7 @@ class PIException(Exception):
 
  
 class PIGCS_Motor(AbstractMotor, Reconnecting):
+
     '''
     Motor using the PI GCS communication protocol with a serial or USB connection.
     Makes use of the pipython module: https://github.com/PI-PhysikInstrumente/PIPython
@@ -47,13 +48,14 @@ class PIGCS_Motor(AbstractMotor, Reconnecting):
             from pipython import GCSDevice
             port = self.serial_or_usb.port_name()
             self._logger.notice('Connecting to GCS device at %s' % port)
+            self._logger.notice('Connecting to GCS device at port %s' % self.port)
             self.gcs = GCSDevice()
             self.gcs.ConnectRS232(port, self.speed)
         else:
-            print ("Already connected")
+            self._logger.notice("Already connected to GCS device at port %s" % self.port)
         refdict = self.gcs.qFRF()
         for n in range(self.naxis):
-            self.referenced[n] = refdict['%d' % (n+1,)]
+            self.referenced[n] = refdict['%d' % (n + 1,)]
 
     def disconnect(self):
         if self.gcs is not None:
@@ -71,7 +73,7 @@ class PIGCS_Motor(AbstractMotor, Reconnecting):
     @reconnect
     @override
     def home(self, axis):
-        self.referenced[axis-1] = False
+        self.referenced[axis - 1] = False
         self.gcs.FRF(axis)
         now = time.time()
         while True:
@@ -82,7 +84,7 @@ class PIGCS_Motor(AbstractMotor, Reconnecting):
                 break
         if self.use_servo:
             self.gcs.SVO(axis, 1)
-        self.referenced[axis-1] = True
+        self.referenced[axis - 1] = True
 
     @reconnect
     @override
@@ -110,7 +112,7 @@ class PIGCS_Motor(AbstractMotor, Reconnecting):
 
     @override
     def was_homed(self, axis):
-        return self.referenced[axis-1]
+        return self.referenced[axis - 1]
 
     @override
     def type(self, axis):
@@ -133,6 +135,7 @@ class PI_E861(PIGCS_Motor):
     This class sets the "use_servo" flag to True in order
     to enable the servo loop after initialization.
     '''
+
     def __init__(self, name, port, speed):
         super().__init__(name, port, speed)
         self.use_servo = True
@@ -140,4 +143,3 @@ class PI_E861(PIGCS_Motor):
 
     def steps_per_SI_unit(self, axis):
         return 1e9
-
