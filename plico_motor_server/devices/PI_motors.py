@@ -142,4 +142,5 @@ class PI_E861(PIGCS_Motor):
         self.steps_to_PIsteps = 1e-6  # PI E-861 uses mm as its unit
 
     def steps_per_SI_unit(self, axis):
+        '''Set the step size to 1 nm'''
         return 1e9
