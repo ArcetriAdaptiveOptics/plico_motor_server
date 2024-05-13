@@ -7,39 +7,17 @@ import time
 
 from plico.utils.logger import Logger
 from plico.utils.decorator import override
+from plico.utils.reconnect import Reconnecting, reconnect
 from plico_motor_server.devices.abstract_motor import AbstractMotor
 from plico_motor.types.motor_status import MotorStatus
 
 
-class GCSException(Exception):
+class PIException(Exception):
     pass
 
+ 
+class PIGCS_Motor(AbstractMotor, Reconnecting):
 
-def _reconnect(f):
-    '''
-    Make sure that the function is executed
-    after connecting to the motor, and trigger
-    a reconnect in the next command if any error occurs.
-
-    Any communication problem will raise a GCSException
-    '''
-
-    def func(self, *args, **kwargs):
-        try:
-            if not self.gcs:
-                self.connect()
-            return f(self, *args, **kwargs)
-        except OSError:
-            self.disconnect()
-            raise GCSException(
-                'Error communicating with PI controller. Will retry...')
-        except GCSException:
-            raise
-
-    return func
-
-
-class PIGCS_Motor(AbstractMotor):
     '''
     Motor using the PI GCS communication protocol with a serial or USB connection.
     Makes use of the pipython module: https://github.com/PI-PhysikInstrumente/PIPython
@@ -47,10 +25,10 @@ class PIGCS_Motor(AbstractMotor):
     an instance of this class is initialized.
     '''
 
-    def __init__(self, name, port, speed):
-        from pipython import GCSDevice  # Not used here, but let's fail now instead of later
+    def __init__(self, name, serial_or_usb, speed):
+        from pipython import GCSDevice # Not used here, but let's fail now instead of later
         self._name = name
-        self.port = port
+        self.serial_or_usb = serial_or_usb
         self.speed = speed
         self.naxis = 1
         self.gcs = None
@@ -60,13 +38,19 @@ class PIGCS_Motor(AbstractMotor):
         self.steps_to_PIsteps = 1  # In case we want to use smaller steps than PI ones
         self._logger = Logger.of('GCS')
         self._last_commanded_position = [0] * self.naxis
+        Reconnecting.__init__(self,
+            self.connect,
+            self.disconnect,
+        )
 
     def connect(self):
         if self.gcs is None:
             from pipython import GCSDevice
+            port = self.serial_or_usb.port_name()
+            self._logger.notice('Connecting to GCS device at %s' % port)
             self._logger.notice('Connecting to GCS device at port %s' % self.port)
             self.gcs = GCSDevice()
-            self.gcs.ConnectRS232(self.port, self.speed)
+            self.gcs.ConnectRS232(port, self.speed)
         else:
             self._logger.notice("Already connected to GCS device at port %s" % self.port)
         refdict = self.gcs.qFRF()
@@ -86,6 +70,7 @@ class PIGCS_Motor(AbstractMotor):
     def name(self):
         return self._name
 
+    @reconnect
     @override
     def home(self, axis):
         self.referenced[axis - 1] = False
@@ -93,7 +78,7 @@ class PIGCS_Motor(AbstractMotor):
         now = time.time()
         while True:
             if time.time() - now > self.home_timeout:
-                raise GCSException('Timeout waiting for homing movement')
+                raise PIException('Timeout waiting for homing movement')
             time.sleep(0.1)
             if self.gcs.qFRF(axis)[axis]:
                 break
@@ -101,23 +86,24 @@ class PIGCS_Motor(AbstractMotor):
             self.gcs.SVO(axis, 1)
         self.referenced[axis - 1] = True
 
-    @_reconnect
+    @reconnect
     @override
     def position(self, axis):
         posdict = self.gcs.qPOS(axis)
         return round(posdict[axis] / self.steps_to_PIsteps)
 
+    @reconnect
     @override
     def move_to(self, axis, position_in_steps):
         self.gcs.MOV(axis, position_in_steps * self.steps_to_PIsteps)
 
     @override
     def stop(self, axis):
-        raise GCSException('Stop command is not supported')
+        raise PIException('Stop command is not supported')
 
     @override
     def deinitialize(self, axis):
-        raise GCSException('Deinitialize command is not supported')
+        raise PIException('Deinitialize command is not supported')
 
     @abc.abstractmethod
     def steps_per_SI_unit(self, axis):
@@ -132,6 +118,7 @@ class PIGCS_Motor(AbstractMotor):
     def type(self, axis):
         return MotorStatus.TYPE_LINEAR
 
+    @reconnect
     @override
     def is_moving(self, axis):
         movingdict = self.gcs.IsMoving(axis)
