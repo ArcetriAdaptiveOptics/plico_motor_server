@@ -39,6 +39,8 @@ class Runner(BaseRunner):
             self._createPI_E861(motorDeviceSection)
         elif motorModel == '8SMC5-USB 8MT30-50' or '8SMC5-USB 8MBM24-2-2':
             self._createStandaMotor(motorDeviceSection)
+        elif motorModel == 'LTS150C/M':
+            self._createLTSMotors(motorDeviceSection)
         else:
             raise KeyError('Unsupported motor model %s' % motorModel)
 
@@ -105,6 +107,15 @@ class Runner(BaseRunner):
         print(name, bytes(usb_port, 'ascii'))
         self._motor = StandaStage(name, bytes(usb_port, 'ascii'), speed)
         self._logger.notice("Standa device %s created" % name)
+    
+    def _createLTSMotors(self, motorDeviceSection):
+        from plico_motor_server.devices.LTS_thorlabs import LTSThorlabsMotor
+        name = self.configuration.deviceName(motorDeviceSection)
+        serial_number = self.configuration.getValue(
+            motorDeviceSection, 'serial_number')
+        self._motor = LTSThorlabsMotor(name, serial_number)
+        self._logger.notice("LTS150C/M device with sn %s created" % serial_number)
+        
 
     def _replyPort(self):
         return self.configuration.replyPort(self.getConfigurationSection())
