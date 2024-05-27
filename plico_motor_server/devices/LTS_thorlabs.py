@@ -40,7 +40,6 @@ class LTSThorlabsMotor(AbstractMotor):
         self.connect()
         self._last_commanded_position = None
         self._standar_time_out = 60000 # 60 second timeout
-        self.velocity_params = self.device.GetVelocityParams()
         
     
     def connect(self):
@@ -75,8 +74,14 @@ class LTSThorlabsMotor(AbstractMotor):
         return pos
     
     def _set_position(self, absolute_pos_in_mm):
+        ''' The same command as device.SetMoveRelativeDistance + device.MoveAbsolute
+        '''
         new_pos = Decimal(absolute_pos_in_mm)
         self.device.MoveTo(new_pos, self._standar_time_out)
+        
+    def _move_by(self, step_in_mm):
+        self.device.SetMoveRelativeDistance(Decimal(step_in_mm))
+        self.device.MoveRelative(self._standar_time_out)
         
     def _check_position(self, position):
         ''' Function for checking if the required position is inside the stage range 0-150 [mm]
@@ -99,19 +104,36 @@ class LTSThorlabsMotor(AbstractMotor):
         self.device.Disconnect()
 
     def get_acceleration(self):
-        acceleration = Decimal.ToDouble(self.velocity_params.get_Acceleration())
+        velocity_params = self.device.GetVelocityParams()
+        acceleration = Decimal.ToDouble(velocity_params.get_Acceleration())
         return acceleration
         
     def set_acceleration(self, value):
-        self.velocity_params.set_Acceleration(Decimal(value))
+        velocity_params = self.device.GetVelocityParams()
+        velocity_params.set_Acceleration(Decimal(value))
+        self.device.SetVelocityParams(velocity_params)
 
     def get_max_velocity(self):
-        max_vel = Decimal.ToDouble(self.velocity_params.get_MaxVelocity())
+        velocity_params = self.device.GetVelocityParams()
+        max_vel = Decimal.ToDouble(velocity_params.get_MaxVelocity())
         return max_vel
     
+    def set_max_velocity(self, value):
+        ''' Set the motor velocity
+        '''
+        velocity_params = self.device.GetVelocityParams()
+        velocity_params.set_MaxVelocity(Decimal(value))
+        self.device.SetVelocityParams(velocity_params)
+    
     def get_min_velocity(self):
-        min_vel = Decimal.ToDouble(self.velocity_params.get_MinVelocity())
+        velocity_params = self.device.GetVelocityParams()
+        min_vel = Decimal.ToDouble(velocity_params.get_MinVelocity())
         return min_vel
+    
+    def set_min_velocity(self, value):
+        velocity_params = self.device.GetVelocityParams()
+        velocity_params.set_MinVelocity(Decimal(value))
+        self.device.SetVelocityParams(velocity_params)
 
 ## Per classe astratta ###
     @override
@@ -185,7 +207,7 @@ class LTSThorlabsMotor(AbstractMotor):
     def home(self, axis):
         ''' To be implemented our homing command 
         '''
-        pass
+        self.homing()
     
     @override
     def move_to(self, axis, pos):
