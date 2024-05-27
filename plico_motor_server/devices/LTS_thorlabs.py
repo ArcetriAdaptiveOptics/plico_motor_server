@@ -35,24 +35,39 @@ class LTSThorlabsMotor(AbstractMotor):
     
     def __init__(self, name, serial_number):
         self._name = name
-        self.serial_number = serial_number
-        self._logger = Logger.of("LTS Stage %s" %self.serial_number)
-        self.device = LongTravelStage.CreateLongTravelStage(self.serial_no)
+        self.serial_no = serial_number
+        self._logger = Logger.of("LTS Stage %s" %self.serial_no)
+        self.connect()
         self._last_commanded_position = None
         self._standar_time_out = 60000 # 60 second timeout
+        self.velocity_params = self.device.GetVelocityParams()
         
     
     def connect(self):
+        '''
+        Connection to the device requires all of these nonseparable commands.
+        '''
+        self.device = LongTravelStage.CreateLongTravelStage(self.serial_no)
+        DeviceManagerCLI.BuildDeviceList() #without this command the connection fails
         self.device.Connect(self.serial_no)
         motor_config = self.device.LoadMotorConfiguration(self.serial_no)
         
         self.device.StartPolling(250)
         self.device.EnableDevice()
     
+    def enable(self):
+        self.device.EnableDevice()
+    
     def identifyDevice(self):
+        '''
+        Device identification causes the enable LED to blink.
+        '''
         self.device.IdentifyDevice()
     
     def homing(self):
+        '''
+        The standard homing position is zero.
+        '''
         self.device.Home(self._standar_time_out)
 
     def _get_position(self):
@@ -73,12 +88,30 @@ class LTSThorlabsMotor(AbstractMotor):
         elif position > max_acceptable_value:
             raise LTSThorlabsException('The required value for the position exceed the stage range. The maximum value allow is 150 mm')
 
+    def stop():
+        self.device.Stop(0) #wait timeout set to zero --> will return immediately
+
     def disable(self):
         self.device.DisableDevice()
         
     def disconnect(self):
         self.device.StopPolling()
         self.device.Disconnect()
+
+    def get_acceleration(self):
+        acceleration = Decimal.ToDouble(self.velocity_params.get_Acceleration())
+        return acceleration
+        
+    def set_acceleration(self, value):
+        self.velocity_params.set_Acceleration(Decimal(value))
+
+    def get_max_velocity(self):
+        max_vel = Decimal.ToDouble(self.velocity_params.get_MaxVelocity())
+        return max_vel
+    
+    def get_min_velocity(self):
+        min_vel = Decimal.ToDouble(self.velocity_params.get_MinVelocity())
+        return min_vel
 
 ## Per classe astratta ###
     @override
@@ -96,7 +129,8 @@ class LTSThorlabsMotor(AbstractMotor):
         '''
         Returns
         -------
-        
+        actual_position: float
+            return the actual position of the motor in mm
         '''
         actual_position = self._get_position()
         self._logger.debug(
@@ -167,7 +201,7 @@ class LTSThorlabsMotor(AbstractMotor):
 
     @override
     def stop(self, axis):
-        pass
+        self.stop()
 
     @override
     def deinitialize(self, axis):
@@ -177,6 +211,8 @@ class LTSThorlabsMotor(AbstractMotor):
     
     
     
-    def search_devices():
-        DeviceManagerCLI.BuildDeviceList()
-        return DeviceManagerCLI.GetDeviceList()
+def search_devices():
+    DeviceManagerCLI.BuildDeviceList()
+    for i in range(0, len(DeviceManagerCLI.GetDeviceList())):
+        print(DeviceManagerCLI.GetDeviceList()[i])
+    return DeviceManagerCLI.GetDeviceList()
