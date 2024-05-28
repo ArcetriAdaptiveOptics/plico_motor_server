@@ -1,15 +1,11 @@
 '''
 Authors
-  - C. Selmi: written in 2022
+  - C. Selmi: written in 2024
   
 SOURCE: https://github.com/Thorlabs/Motion_Control_Examples/blob/main/Python/Integrated%20Stages/LTS/lts_pythonnet.py#L59
 
 '''
-import os
-import time
-import sys
 import clr
-import serial
 from plico.utils.logger import Logger
 from plico.utils.decorator import override
 from plico.utils.reconnect import Reconnecting, reconnect
@@ -32,16 +28,17 @@ class LTSThorlabsMotor(AbstractMotor):
     '''
     This class allow to control Thorlabs LTS integrated stages motors with python using pythonnet
     '''
-    
+  
     def __init__(self, name, serial_number):
         self._name = name
+        self.naxis = 1
         self.serial_no = serial_number
         self._logger = Logger.of("LTS Stage %s" %self.serial_no)
         self.connect()
         self._last_commanded_position = None
         self._standar_time_out = 60000 # 60 second timeout
-        
-    
+   
+ 
     def connect(self):
         '''
         Connection to the device requires all of these nonseparable commands.
@@ -49,8 +46,8 @@ class LTSThorlabsMotor(AbstractMotor):
         self.device = LongTravelStage.CreateLongTravelStage(self.serial_no)
         DeviceManagerCLI.BuildDeviceList() #without this command the connection fails
         self.device.Connect(self.serial_no)
-        motor_config = self.device.LoadMotorConfiguration(self.serial_no)
-        
+        self.device.LoadMotorConfiguration(self.serial_no)
+      
         self.device.StartPolling(250)
         self.device.EnableDevice()
     
@@ -70,6 +67,8 @@ class LTSThorlabsMotor(AbstractMotor):
         self.device.Home(self._standar_time_out)
 
     def _get_position(self):
+        ''' Absolute position in mm
+        '''
         pos = Decimal.ToDouble(self.device.get_DevicePosition())
         return pos
     
@@ -93,7 +92,7 @@ class LTSThorlabsMotor(AbstractMotor):
         elif position > max_acceptable_value:
             raise LTSThorlabsException('The required value for the position exceed the stage range. The maximum value allow is 150 mm')
 
-    def stop():
+    def _stop(self):
         self.device.Stop(0) #wait timeout set to zero --> will return immediately
 
     def disable(self):
@@ -104,33 +103,61 @@ class LTSThorlabsMotor(AbstractMotor):
         self.device.Disconnect()
 
     def get_acceleration(self):
+        '''
+        Returns
+        -------
+        acceleration: float [mm/s^2]
+        '''
         velocity_params = self.device.GetVelocityParams()
         acceleration = Decimal.ToDouble(velocity_params.get_Acceleration())
         return acceleration
         
     def set_acceleration(self, value):
+        ''' Set the motor velocity
+        Parameters
+        ----------
+        value: float [mm/s^2]
+        '''
         velocity_params = self.device.GetVelocityParams()
         velocity_params.set_Acceleration(Decimal(value))
         self.device.SetVelocityParams(velocity_params)
 
     def get_max_velocity(self):
+        '''
+        Returns
+        -------
+        max_vel: float [mm/s]
+        '''
         velocity_params = self.device.GetVelocityParams()
         max_vel = Decimal.ToDouble(velocity_params.get_MaxVelocity())
         return max_vel
     
     def set_max_velocity(self, value):
         ''' Set the motor velocity
+        Parameters
+        ----------
+        value: float [mm/s]
         '''
         velocity_params = self.device.GetVelocityParams()
         velocity_params.set_MaxVelocity(Decimal(value))
         self.device.SetVelocityParams(velocity_params)
     
     def get_min_velocity(self):
+        '''
+        Returns
+        -------
+        min_vel: float [nm/s]
+        '''
         velocity_params = self.device.GetVelocityParams()
         min_vel = Decimal.ToDouble(velocity_params.get_MinVelocity())
         return min_vel
     
     def set_min_velocity(self, value):
+        '''
+        Parameters
+        ----------
+        value: float [nm/s]
+        '''
         velocity_params = self.device.GetVelocityParams()
         velocity_params.set_MinVelocity(Decimal(value))
         self.device.SetVelocityParams(velocity_params)
@@ -147,7 +174,7 @@ class LTSThorlabsMotor(AbstractMotor):
         return self._name
 
     @override
-    def position(self, axis):
+    def position(self, axis=1):
         '''
         Returns
         -------
@@ -160,10 +187,10 @@ class LTSThorlabsMotor(AbstractMotor):
         return actual_position
 
     @override
-    def steps_per_SI_unit(self, axis):
+    def steps_per_SI_unit(self, axis=1):
         ''' Number of steps/m
         '''
-        pass
+        return 1000
 
     @override
     def was_homed(self, axis):
@@ -205,8 +232,6 @@ class LTSThorlabsMotor(AbstractMotor):
     
     @override
     def home(self, axis):
-        ''' To be implemented our homing command 
-        '''
         self.homing()
     
     @override
@@ -223,7 +248,7 @@ class LTSThorlabsMotor(AbstractMotor):
 
     @override
     def stop(self, axis):
-        self.stop()
+        self._stop()
 
     @override
     def deinitialize(self, axis):
