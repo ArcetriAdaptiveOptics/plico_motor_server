@@ -34,6 +34,7 @@ class MFF10xThorlabsMotor(AbstractMotor):
         self.connect()
         self._last_commanded_position = None
         self._standar_time_out = 60000 # 60 second timeout
+        self._deviceSettings = self.device.FilterFlipperDeviceSettings
         
     def connect(self):
         '''
@@ -44,10 +45,12 @@ class MFF10xThorlabsMotor(AbstractMotor):
         self.device.Connect(self.serial_no)
         
         self.device.StartPolling(250)
-        self.device.EnableDevice()
+        self.enable()
         
     def enable(self):
         self.device.EnableDevice()
+        c = DeviceConfiguration.DeviceSettingsUseOptionType
+        self.device.GetDeviceConfiguration(self.serial_no, c.UseDeviceSettings)
     
     def identifyDevice(self):
         '''
@@ -77,10 +80,14 @@ class MFF10xThorlabsMotor(AbstractMotor):
         '''
         The time taken to get from one position to other in milliseconds, range 10 to 100000.
         '''
-        pass
+        self.device.GetSettings(self._deviceSettings)
+        transit_time = self._deviceSettings.get_FilterFlipper().get_TransitTime()
+        return transit_time
     
     def set_transitTime(self, time_in_ms):
-        pass
+        self.device.GetSettings(self._deviceSettings)
+        self._deviceSettings.get_FilterFlipper().set_TransitTime(time_in_ms)
+        self.device.SetSettings(self._deviceSettings, False)
     
     def _stop(self):
         self.device.Stop(0) #wait timeout set to zero --> will return immediately
