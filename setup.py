@@ -95,6 +95,7 @@ setup(name=NAME,
                         "pyserial",
                         "pipython",
                         "libximc",
+                        "pythonnet"
                         ],
       include_package_data=True,
       test_suite='test',

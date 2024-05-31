@@ -102,8 +102,15 @@ class Runner(BaseRunner):
         self._logger.notice("Creating controller processes")
         self._determineInstalledBinaryDir()
         sections = self._configuration.numberedSectionList(prefix='motor')
+        try:
+            delay = self._configuration.getValue(Constants.PROCESS_MONITOR_CONFIG_SECTION,
+                                                 'spawn_delay', getfloat=True)
+        except KeyError as e:
+            print(e)
+            delay = 0
         for section in sections:
             self._spawnController(Constants.SERVER_PROCESS_NAME, section)
+            time.sleep(delay)
         self._replySocket = self.rpc().replySocket(Constants.PROCESS_MONITOR_PORT)
 
     def _handleRequest(self):
