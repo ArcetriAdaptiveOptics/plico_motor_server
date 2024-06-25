@@ -124,6 +124,19 @@ class MFF10xThorlabsMotor(AbstractMotor):
         return actual_position
 
     @override
+    def velocity(self, axis):
+        '''
+        Returns
+        -------
+        velocity: float
+            motor velocity in steps/s
+        '''
+        velocity = 1000 / self.get_transitTime()
+        self._logger.debug(
+            'Velocity = %f [mm/s]' % velocity)
+        return velocity
+
+    @override
     def steps_per_SI_unit(self, axis):
         ''' Number of steps/m
         '''
@@ -181,6 +194,24 @@ class MFF10xThorlabsMotor(AbstractMotor):
         '''
         self._set_position(pos)
         self._last_commanded_position = pos
+
+    @override
+    def set_velocity(self, axis, velocity):
+        '''
+        Parameters
+        ----------
+        velocity: float
+            velocity in mm/sec
+        '''
+        if velocity < 0.01:
+            self._logger.error('Velocity %s steps/s is too low, minimum value is 0.01 steps/s' % velocity)
+            velocity = 0.01
+
+        if velocity > 100:
+            self._logger.error('Velocity %s steps/s is too high, maximum value is 100 steps/s' % velocity)
+            velocity = 100
+
+        self.set_transitTime(1000 / velocity)
 
     @override
     def stop(self, axis):

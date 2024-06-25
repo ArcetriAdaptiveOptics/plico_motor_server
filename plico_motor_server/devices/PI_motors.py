@@ -98,6 +98,14 @@ class PIGCS_Motor(AbstractMotor, Reconnecting):
         self.gcs.MOV(axis, position_in_steps * self.steps_to_PIsteps)
 
     @override
+    def velocity(self, axis):
+        return 0
+
+    @override
+    def set_velocity(self, axis):
+        raise PIException('Set velocity command is not implemented')
+
+    @override
     def stop(self, axis):
         raise PIException('Stop command is not supported')
 

@@ -91,6 +91,10 @@ class MotorControllerTest(unittest.TestCase):
         self._ctrl.move_by(1, -10)
         self.assertEqual(113, self._motor.position(1))
 
+    def test_set_velocity(self):
+        self._ctrl.set_velocity(1, 345.6)
+        self.assertEqual(345.6, self._motor.velocity(1))
+
 
 if __name__ == "__main__":
     # import sys;sys.argv = ['', 'Test.testName']

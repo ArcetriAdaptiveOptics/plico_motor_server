@@ -181,6 +181,9 @@ class IntegrationTest(unittest.TestCase):
     def _test_picomotor_raise_exception_on_home(self):
         self.assertRaises(PicomotorException, self.client2.home)
 
+    def _test_picomotor_raise_exception_on_set_velocity(self):
+        self.assertRaises(PicomotorException, self.client2.set_velocity)
+
     def _test_move_to(self):
         self.client1.move_to(123)
         self.client2.move_to(-34)
@@ -199,6 +202,12 @@ class IntegrationTest(unittest.TestCase):
         Poller(3).check(ExecutionProbe(
             lambda: self.assertEqual(-24, self.client2.position())))
 
+    def _test_set_velocity(self):
+        self.client1.set_velocity(42)
+        Poller(3).check(ExecutionProbe(
+            lambda: self.assertEqual(42,
+                                     self.client1.velocity())))
+
     def _test_info(self):
         with open('/tmp/info.txt', 'w') as f:
             info = self.clientAll.serverInfo()
@@ -215,6 +224,7 @@ class IntegrationTest(unittest.TestCase):
         self._test_picomotor_raise_exception_on_home()
         self._test_move_to()
         self._test_move_by()
+        self._test_set_velocity()
         self._test_get_snapshot()
         self._test_server_info()
         self._check_backdoor()

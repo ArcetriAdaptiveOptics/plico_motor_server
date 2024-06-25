@@ -3,14 +3,7 @@ Authors
   - C. Selmi: written in July 2023
 '''
 import os
-import sys
-if sys.version_info >= (3,0):
-    import urllib.parse
 from ctypes import *
-import platform
-import tempfile
-import re
-import time
 from plico_motor_server.devices.abstract_motor import AbstractMotor
 from plico.utils.decorator import override
 from plico_motor.types.motor_status import MotorStatus
@@ -108,7 +101,7 @@ class StandaStage(AbstractMotor):
         result = pyximc.lib.command_movr(self._deviceId, delta_step, delta_ustep)
         self._check_result(result)
         self._wait_for_stop()
-        n_step, n_ustep = self.get_position()
+        n_step, n_ustep = self._get_position()
         print("Position: {0} steps, {1} microsteps".format(n_step, n_ustep))
 
     def _wait_for_stop(self):
@@ -125,7 +118,7 @@ class StandaStage(AbstractMotor):
     def get_speed(self):
         mvst = self._get_move_settings()
         self.speed = mvst.Speed
-        return self.speed 
+        return self.speed
 
     def set_speed(self, new_speed):
         '''
@@ -139,7 +132,7 @@ class StandaStage(AbstractMotor):
         mvst.Speed = int(new_speed)
         result = pyximc.lib.set_move_settings(self._deviceId, pyximc.byref(mvst))
         self._check_result(result)
-        self.get_speed()
+        return self.get_speed()
 
     def get_acceleration(self):
         mvst = self._get_move_settings()
@@ -293,6 +286,21 @@ class StandaStage(AbstractMotor):
         n_step, n_ustep = self._get_position()
         print("Position: {0} steps, {1} microsteps".format(n_step, n_ustep))
         self._last_commanded_position = upos
+
+    @override
+    def set_velocity(self, axis, velocity):
+        '''
+        Parameters
+        ----------
+        new_speed: int
+              Target speed (for stepper motor: steps/s, for DC: rpm).
+              Range: 0..100000
+        '''
+        self.set_speed(velocity)
+
+    @override
+    def velocity(self, axis):
+        return self.get_speed()
 
     @override
     def stop(self, axis):
