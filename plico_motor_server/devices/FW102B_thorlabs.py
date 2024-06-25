@@ -2,7 +2,6 @@
 Authors
   - C. Selmi: written in 2022
 '''
-import os
 import time
 import serial
 from plico.utils.logger import Logger
@@ -163,6 +162,16 @@ class FilterWheel(AbstractMotor, Reconnecting):
         return curr_pos
 
     @override
+    def velocity(self, axis):
+        '''
+        Returns
+        -------
+        velocity: float
+            Motor velocity. Since this is not supported, it is always zero.
+        '''
+        return 0.0
+
+    @override
     def steps_per_SI_unit(self, axis):
         return 1
 
@@ -221,3 +230,7 @@ class FilterWheel(AbstractMotor, Reconnecting):
     @override
     def deinitialize(self, axis):
         raise FilterWheelException('Deinitialize command is not supported.')
+
+    @override
+    def set_velocity(self, velocity, axis):
+        raise FilterWheelException('Set_velocity command is not supported.')

@@ -201,6 +201,16 @@ class TunableFilter(AbstractMotor, Reconnecting):
         return curr_pos
 
     @override
+    def velocity(self, axis):
+        '''
+        Returns
+        -------
+        velocity: float
+            Motor velocity. Always zero.
+        '''
+        return 0
+
+    @override
     def steps_per_SI_unit(self, axis):
         return 1
     
@@ -267,5 +277,9 @@ class TunableFilter(AbstractMotor, Reconnecting):
     @override
     def deinitialize(self, axis):
         raise TunableFilterException('Deinitialize command is not supported.')
+
+    @override
+    def set_velocity(self, axis):
+        raise TunableFilterException('Set velocity command is not supported.')
 
     

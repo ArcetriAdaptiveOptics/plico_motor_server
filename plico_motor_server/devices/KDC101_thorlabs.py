@@ -184,6 +184,19 @@ class KDC101ThorlabsMotor(AbstractMotor):
         return actual_position
 
     @override
+    def velocity(self, axis):
+        '''
+        Returns
+        -------
+        velocity: float
+            motor velocity in mm/s
+        '''
+        velocity = self.get_max_velocity()
+        self._logger.debug(
+            'Velocity = %f [mm/s]' % velocity)
+        return velocity
+
+    @override
     def steps_per_SI_unit(self, axis):
         ''' Number of steps/m
         '''
@@ -242,6 +255,16 @@ class KDC101ThorlabsMotor(AbstractMotor):
         self._check_position(pos)
         self._set_position(pos)
         self._last_commanded_position = pos
+
+    @override
+    def set_velocity(self, axis, velocity):
+        '''
+        Parameters
+        ----------
+        velocity: float
+            velocity in mm/sec
+        '''
+        self.set_max_velocity(velocity)
 
     @override
     def stop(self, axis):

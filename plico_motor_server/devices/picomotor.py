@@ -126,6 +126,14 @@ class Picomotor(AbstractMotor, Reconnecting):
         return self._moveby(axis, delta)
 
     @override
+    def velocity(self, axis):
+        return 0
+
+    @override
+    def set_velocity(self, axis, velocity):
+        raise PicomotorException('Set velocity command is not implemented')
+
+    @override
     def stop(self, axis):
         raise PicomotorException('Stop command is not supported')
 

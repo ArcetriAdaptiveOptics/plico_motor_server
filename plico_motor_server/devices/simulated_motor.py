@@ -18,6 +18,7 @@ class SimulatedMotor(AbstractMotor):
         self._is_moving = False
         self._raiseExceptionOnDeinitialize = False
         self._axis = 1
+        self._velocity = 0
 
     @override
     def name(self):
@@ -44,6 +45,14 @@ class SimulatedMotor(AbstractMotor):
     def move_to(self, axis, position_in_steps):
         assert axis == self._axis
         self._position_in_steps = position_in_steps
+
+    @override
+    def velocity(self, axis):
+        return self._velocity
+
+    @override
+    def set_velocity(self, axis, velocity):
+        self._velocity = velocity
 
     @override
     def stop(self, axis):
