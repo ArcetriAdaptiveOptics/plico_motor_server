@@ -188,3 +188,7 @@ class Runner(BaseRunner):
         if hasattr(self, '_motor'):
             return self._motor.__class__.__name__
         return ''
+
+    @override
+    def _get_server_type_name(self):
+        return 'plico_motor'
