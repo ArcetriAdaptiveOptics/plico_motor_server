@@ -161,6 +161,7 @@ class Runner(BaseRunner):
             self._replySocket,
             self._statusSocket,
             self.rpc())
+        self._configureDiscoveryServer('plico_motor', self._motor.__class__.__name__)
 
     def _runLoop(self):
         self._logRunning()
@@ -181,14 +182,3 @@ class Runner(BaseRunner):
     @override
     def terminate(self, signal, frame):
         self._controller.terminate()
-
-    @override
-    def _get_device_class_name(self):
-        '''Override to set the device class name'''
-        if hasattr(self, '_motor'):
-            return self._motor.__class__.__name__
-        return ''
-
-    @override
-    def _get_server_type_name(self):
-        return 'plico_motor'
