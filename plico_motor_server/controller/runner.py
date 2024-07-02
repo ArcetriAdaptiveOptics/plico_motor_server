@@ -181,3 +181,10 @@ class Runner(BaseRunner):
     @override
     def terminate(self, signal, frame):
         self._controller.terminate()
+
+    @override
+    def _get_device_class_name(self):
+        '''Override to set the device class name'''
+        if hasattr(self, '_motor'):
+            return self._motor.__class__.__name__
+        return ''
