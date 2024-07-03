@@ -12,6 +12,7 @@ from plico.rpc.zmq_remote_procedure_call import ZmqRemoteProcedureCall
 from plico.utils.logger import Logger
 from plico.rpc.sockets import Sockets
 from plico.rpc.zmq_ports import ZmqPorts
+from plico.client.serverinfo_client import ServerInfoClient
 from plico_motor_server.utils.constants import Constants
 from plico_motor_server.utils.starter_script_creator import \
     StarterScriptCreator
@@ -89,7 +90,7 @@ class IntegrationTest(unittest.TestCase):
         ssc = StarterScriptCreator()
         ssc.setInstallationBinDir(self.BIN_DIR)
         ssc.setPythonPath(self.SOURCE_DIR)
-        ssc.setConfigFileDestination(self.CONF_FILE)
+        ssc.setConfigFileDestination('$1') # Allow config file to be a script parameter
         ssc.installExecutables()
 
     def _startProcesses(self):
@@ -118,27 +119,31 @@ class IntegrationTest(unittest.TestCase):
     def _testProcessesActuallyStarted(self):
         controllerLogFile = os.path.join(
             self.LOG_DIR,
-            '%s.log' % Constants.SERVER_1_CONFIG_SECTION)
+            '%s%d.log' % (Constants.SERVER_CONFIG_SECTION_PREFIX, 1))
         Poller(5).check(MessageInFileProbe(
             Runner.RUNNING_MESSAGE, controllerLogFile))
         controller2LogFile = os.path.join(
             self.LOG_DIR,
-            '%s.log' % Constants.SERVER_2_CONFIG_SECTION)
+            '%s%d.log' % (Constants.SERVER_CONFIG_SECTION_PREFIX, 2))
         Poller(5).check(MessageInFileProbe(
             Runner.RUNNING_MESSAGE, controller2LogFile))
 
     def _buildClients(self):
         ports1 = ZmqPorts.fromConfiguration(
             self.configuration,
-            Constants.SERVER_1_CONFIG_SECTION)
+            '%s%d' % (Constants.SERVER_CONFIG_SECTION_PREFIX, 1))
         self.client1 = MotorClient(
             self.rpc, Sockets(ports1, self.rpc))
         ports2 = ZmqPorts.fromConfiguration(
             self.configuration,
-            Constants.SERVER_2_CONFIG_SECTION)
+            '%s%d' % (Constants.SERVER_CONFIG_SECTION_PREFIX, 2))
         self.client2Axis = 2
         self.client2 = MotorClient(
             self.rpc, Sockets(ports2, self.rpc), axis=self.client2Axis)
+        self.clientAll = ServerInfoClient(
+            self.rpc,
+            Sockets(ZmqPorts('localhost', Constants.PROCESS_MONITOR_PORT), self.rpc).serverRequest(),
+            self._logger)
 
     def _check_backdoor(self):
         self.client1.execute(
@@ -176,6 +181,9 @@ class IntegrationTest(unittest.TestCase):
     def _test_picomotor_raise_exception_on_home(self):
         self.assertRaises(PicomotorException, self.client2.home)
 
+    def _test_picomotor_raise_exception_on_set_velocity(self):
+        self.assertRaises(PicomotorException, self.client2.set_velocity)
+
     def _test_move_to(self):
         self.client1.move_to(123)
         self.client2.move_to(-34)
@@ -194,6 +202,17 @@ class IntegrationTest(unittest.TestCase):
         Poller(3).check(ExecutionProbe(
             lambda: self.assertEqual(-24, self.client2.position())))
 
+    def _test_set_velocity(self):
+        self.client1.set_velocity(42)
+        Poller(3).check(ExecutionProbe(
+            lambda: self.assertEqual(42,
+                                     self.client1.velocity())))
+
+    def _test_info(self):
+        with open('/tmp/info.txt', 'w') as f:
+            info = self.clientAll.serverInfo()
+            f.write(str(info))
+
     def test_main(self):
         self._buildClients()
         self._createStarterScripts()
@@ -205,9 +224,11 @@ class IntegrationTest(unittest.TestCase):
         self._test_picomotor_raise_exception_on_home()
         self._test_move_to()
         self._test_move_by()
+        self._test_set_velocity()
         self._test_get_snapshot()
         self._test_server_info()
         self._check_backdoor()
+        self._test_info()
         self._wasSuccessful = True
 
 

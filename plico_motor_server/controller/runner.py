@@ -1,9 +1,14 @@
 import os
 import time
 from plico.utils.base_runner import BaseRunner
-from plico_motor_server.devices.simulated_motor import SimulatedMotor
+from plico.utils.serial_or_usb_connection import SerialOrUSBConnection
+from plico_motor_server.devices.simulated_motor import \
+    SimulatedMotor
+from plico_motor_server.devices.KURIOSVB1_thorlabs import TunableFilter
+from plico_motor_server.devices.FW102B_thorlabs import FilterWheel
+from plico_motor_server.devices.PI_motors import PI_E861
 from plico_motor_server.devices.picomotor import Picomotor
-from plico_motor_server.devices.tunable_filter import TunableFilter
+
 from plico.utils.logger import Logger
 from plico.utils.control_loop import FaultTolerantControlLoop
 from plico.utils.decorator import override
@@ -28,6 +33,20 @@ class Runner(BaseRunner):
             self._createPicomotor(motorDeviceSection)
         elif motorModel == 'tunable_filter':
             self._createTunableFilter(motorDeviceSection)
+        elif motorModel == 'KURIOS-VB1_thorlabs':
+            self._createFilterDevice(motorDeviceSection)
+        elif motorModel == 'FW102B_thorlabs':
+            self._createFilterDevice(motorDeviceSection)
+        elif motorModel == 'PI_E861':
+            self._createPI_E861(motorDeviceSection)
+        elif motorModel in ['8SMC5-USB 8MT30-50', '8SMC5-USB 8MBM24-2-2']:
+            self._createStandaMotor(motorDeviceSection)
+        elif motorModel == 'LTS150C/M':
+            self._createLTSMotors(motorDeviceSection)
+        elif motorModel == 'KDC101_KCube':
+            self._createKDCMotors(motorDeviceSection)
+        elif motorModel == 'MFF_10x':
+            self._createFilterFlipper(motorDeviceSection)
         else:
             raise KeyError('Unsupported motor model %s' % motorModel)
 
@@ -36,6 +55,7 @@ class Runner(BaseRunner):
         self._motor = SimulatedMotor(motorName)
 
     def _createPicomotor(self, motorDeviceSection):
+        from plico_motor_server.devices.picomotor import Picomotor
         name = self.configuration.deviceName(motorDeviceSection)
         ipaddr = self.configuration.getValue(motorDeviceSection, 'ip_address')
         naxis = self.configuration.getValue(
@@ -64,6 +84,64 @@ class Runner(BaseRunner):
         name = self.configuration.deviceName(motorDeviceSection)
         yamlfile = self.configuration.getValue(motorDeviceSection, 'yaml_file')
         self._motor = TunableFilter(yamlfile)
+
+    def _createFilterDevice(self, motorDeviceSection):
+        name = self.configuration.deviceName(motorDeviceSection)
+        serial_or_usb = SerialOrUSBConnection.fromConfiguration(
+                self.configuration,
+                motorDeviceSection)
+        speed = self.configuration.getValue(
+            motorDeviceSection, 'speed', getint=True)
+        if name == 'TunableFilter':
+            self._motor = TunableFilter(name, serial_or_usb, speed)
+        elif name == 'FilterWheel':
+            self._motor = FilterWheel(name, serial_or_usb, speed)
+
+
+    def _createPI_E861(self, motorDeviceSection):
+        from plico_motor_server.devices.PI_motors import PI_E861
+        name = self.configuration.deviceName(motorDeviceSection)
+        serial_or_usb = SerialOrUSBConnection.fromConfiguration(
+                self.configuration,
+                motorDeviceSection)
+        speed = self.configuration.getValue(
+            motorDeviceSection, 'speed', getint=True)
+        self._motor = PI_E861(name, serial_or_usb, speed)
+
+    def _createStandaMotor(self, motorDeviceSection):
+        from plico_motor_server.devices.standa_motors import StandaStage
+        name = self.configuration.deviceName(motorDeviceSection)
+        usb_port = self.configuration.getValue(
+            motorDeviceSection, 'usb_port')
+        speed = self.configuration.getValue(
+            motorDeviceSection, 'speed', getint=True)
+        print(name, bytes(usb_port, 'ascii'))
+        self._motor = StandaStage(name, bytes(usb_port, 'ascii'), speed)
+        self._logger.notice("Standa device %s created" % name)
+    
+    def _createLTSMotors(self, motorDeviceSection):
+        from plico_motor_server.devices.LTS_thorlabs import LTSThorlabsMotor
+        name = self.configuration.deviceName(motorDeviceSection)
+        serial_number = self.configuration.getValue(
+            motorDeviceSection, 'serial_number')
+        self._motor = LTSThorlabsMotor(name, serial_number)
+        self._logger.notice("LTS150C/M device with sn %s created" % serial_number)
+    
+    def _createKDCMotors(self, motorDeviceSection):
+        from plico_motor_server.devices.KDC101_thorlabs import KDC101ThorlabsMotor
+        name = self.configuration.deviceName(motorDeviceSection)
+        serial_number = self.configuration.getValue(
+            motorDeviceSection, 'serial_number')
+        self._motor = KDC101ThorlabsMotor(name, serial_number)
+        self._logger.notice("KDC101_KCube device with sn %s created" % serial_number) 
+
+    def _createFilterFlipper(self, motorDeviceSection):
+        from plico_motor_server.devices.MFF10x_thorlabs import MFF10xThorlabsMotor
+        name = self.configuration.deviceName(motorDeviceSection)
+        serial_number = self.configuration.getValue(
+            motorDeviceSection, 'serial_number')
+        self._motor = MFF10xThorlabsMotor(name, serial_number)
+        self._logger.notice("Filter flipper device with sn %s created" % serial_number) 
 
     def _replyPort(self):
         return self.configuration.replyPort(self.getConfigurationSection())
