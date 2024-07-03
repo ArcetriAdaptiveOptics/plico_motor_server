@@ -18,16 +18,9 @@ class StarterScriptCreator(StarterScriptCreatorBase):
             Constants.PROCESS_MONITOR_CONFIG_SECTION
         )
         self._createAStarterScript(
-            os.path.join(self._binDir,
-                         Constants.SERVER_1_PROCESS_NAME),
+            os.path.join(self._binDir, Constants.SERVER_PROCESS_NAME),
             psh.controllerStartUpScriptPath(),
-            Constants.SERVER_1_CONFIG_SECTION
-        )
-        self._createAStarterScript(
-            os.path.join(self._binDir,
-                         Constants.SERVER_2_PROCESS_NAME),
-            psh.controllerStartUpScriptPath(),
-            Constants.SERVER_2_CONFIG_SECTION
+            '$2'  # Section name is a bash parameter
         )
         self._createAStarterScript(
             os.path.join(self._binDir, Constants.KILL_ALL_PROCESS_NAME),

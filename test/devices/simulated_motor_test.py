@@ -24,6 +24,10 @@ class SimulatedMotorTest(unittest.TestCase):
         self._motor.move_to(1, 123)
         self.assertEqual(123, self._motor.position(1))
 
+    def test_velocity(self):
+        self._motor.set_velocity(1, 987.6)
+        self.assertEqual(987.6, self._motor.velocity(1))
+
 
 if __name__ == "__main__":
     unittest.main()

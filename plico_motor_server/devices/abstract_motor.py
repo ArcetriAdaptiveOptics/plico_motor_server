@@ -22,6 +22,16 @@ class AbstractMotor(with_metaclass(abc.ABCMeta, object)):
         assert False
 
     @abc.abstractmethod
+    def velocity(self, axis=1):
+        '''
+        Returns
+        ------
+        velocity: float
+            velocity in steps per second
+        '''
+        assert False
+
+    @abc.abstractmethod
     def steps_per_SI_unit(self, axis=1):
         '''
         Returns
@@ -84,6 +94,19 @@ class AbstractMotor(with_metaclass(abc.ABCMeta, object)):
             desired position in steps
         '''
         assert False
+
+    @abc.abstractmethod
+    def set_velocity(self, axis=1):
+        '''
+        Set motor velocity
+
+        Parameters
+        ----------
+        velocity: float
+            desired velocity in steps per second
+        '''
+        assert False
+
 
     @abc.abstractmethod
     def stop(self, axis=1):
