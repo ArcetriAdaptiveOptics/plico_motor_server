@@ -31,6 +31,8 @@ class Runner(BaseRunner):
             self._createSimulatedMotor(motorDeviceSection)
         elif motorModel == 'picomotor':
             self._createPicomotor(motorDeviceSection)
+        elif motorModel == 'tunable_filter':
+            self._createTunableFilter(motorDeviceSection)
         elif motorModel == 'KURIOS-VB1_thorlabs':
             self._createFilterDevice(motorDeviceSection)
         elif motorModel == 'FW102B_thorlabs':
@@ -77,6 +79,11 @@ class Runner(BaseRunner):
         #                             axis=axis,
         #                             timeout=timeout,
         #                             name=name)
+
+    def _createTunableFilter(self, motorDeviceSection):
+        name = self.configuration.deviceName(motorDeviceSection)
+        yamlfile = self.configuration.getValue(motorDeviceSection, 'yaml_file')
+        self._motor = TunableFilter(yamlfile)
 
     def _createFilterDevice(self, motorDeviceSection):
         name = self.configuration.deviceName(motorDeviceSection)
