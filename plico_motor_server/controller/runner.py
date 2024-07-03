@@ -168,6 +168,7 @@ class Runner(BaseRunner):
             self._replySocket,
             self._statusSocket,
             self.rpc())
+        self._configureDiscoveryServer('plico_motor', self._motor.__class__.__name__)
 
     def _runLoop(self):
         self._logRunning()
