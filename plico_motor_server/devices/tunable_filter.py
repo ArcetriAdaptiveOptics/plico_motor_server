@@ -75,7 +75,7 @@ class TunableFilter(AbstractMotor):
     def connect(self):
 
         if self.ser is None:
-            self.ser = serial.Serial(port, speed,
+            self.ser = serial.Serial(self.currfilt.port, self.currfilt.speed,
                                      bytesize=self.currfilt.data_bits,
                                      parity=self.currfilt.parity,
                                      stopbits=self.currfilt.stop_bits)
