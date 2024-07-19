@@ -8,8 +8,6 @@ class Constants:
     PROCESS_MONITOR_CONFIG_SECTION = 'processMonitor'
     SERVER_CONFIG_SECTION_PREFIX = 'motor'
 
-    PROCESS_MONITOR_PORT = 8989
-
     # TODO: must be the same of console_scripts in setup.py
     START_PROCESS_NAME = 'plico_motor_start'
     STOP_PROCESS_NAME = 'plico_motor_stop'

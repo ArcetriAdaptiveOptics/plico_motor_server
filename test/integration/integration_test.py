@@ -95,7 +95,7 @@ class IntegrationTest(unittest.TestCase):
 
     def _startProcesses(self):
         psh = ProcessStartUpHelper()
-        serverLog = open(os.path.join(self.LOG_DIR, "server.out"), "wb")
+        serverLog = open(os.path.join(self.LOG_DIR, self.SERVER_LOG_PATH), "wb")
         self.server = subprocess.Popen(
             [psh.processProcessMonitorStartUpScriptPath(),
              self.CONF_FILE,
@@ -140,9 +140,11 @@ class IntegrationTest(unittest.TestCase):
         self.client2Axis = 2
         self.client2 = MotorClient(
             self.rpc, Sockets(ports2, self.rpc), axis=self.client2Axis)
+        process_monitor_port = self.configuration.getValue(self.CONF_SECTION,
+                                                           'port', getint=True)
         self.clientAll = ServerInfoClient(
             self.rpc,
-            Sockets(ZmqPorts('localhost', Constants.PROCESS_MONITOR_PORT), self.rpc).serverRequest(),
+            Sockets(ZmqPorts('localhost', process_monitor_port), self.rpc).serverRequest(),
             self._logger)
 
     def _check_backdoor(self):
