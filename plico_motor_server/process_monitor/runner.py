@@ -108,10 +108,18 @@ class Runner(BaseRunner):
         except KeyError as e:
             print(e)
             delay = 0
+
+        try:
+            port = self._configuration.getValue(Constants.PROCESS_MONITOR_CONFIG_SECTION,
+                                                 'port', getint=True)
+        except KeyError:
+            self._logger.error('Key "port" missing from process monitor configuration')
+            raise
+
         for section in sections:
             self._spawnController(Constants.SERVER_PROCESS_NAME, section)
             time.sleep(delay)
-        self._replySocket = self.rpc().replySocket(Constants.PROCESS_MONITOR_PORT)
+        self._replySocket = self.rpc().replySocket(port)
 
     def _handleRequest(self):
         '''Handler for serverInfo'''
