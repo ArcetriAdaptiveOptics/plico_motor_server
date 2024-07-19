@@ -18,8 +18,7 @@ from plico_motor_server.utils.starter_script_creator import \
     StarterScriptCreator
 from plico_motor_server.utils.process_startup_helper import \
     ProcessStartUpHelper
-from plico_motor_server.process_monitor.runner import Runner as \
-    ProcessMonitorRunner
+from plico.utils.process_monitor_runner import RUNNING_MESSAGE as MONITOR_RUNNING_MESSAGE
 from plico_motor.client.motor_client import MotorClient
 from plico_motor.client.snapshot_entry import SnapshotEntry
 from plico_motor_server.controller.runner import Runner
@@ -102,7 +101,7 @@ class IntegrationTest(unittest.TestCase):
              self.CONF_SECTION],
             stdout=serverLog, stderr=serverLog)
         Poller(5).check(MessageInFileProbe(
-            ProcessMonitorRunner.RUNNING_MESSAGE(), self.SERVER_LOG_PATH))
+            MONITOR_RUNNING_MESSAGE(Constants.SERVER_PROCESS_NAME), self.SERVER_LOG_PATH))
 
     def _startFakeNewFocus8742(self):
         psh = ProcessStartUpHelper()
