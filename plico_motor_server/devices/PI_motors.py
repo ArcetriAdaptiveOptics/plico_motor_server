@@ -48,11 +48,10 @@ class PIGCS_Motor(AbstractMotor, Reconnecting):
             from pipython import GCSDevice
             port = self.serial_or_usb.port_name()
             self._logger.notice('Connecting to GCS device at %s' % port)
-            self._logger.notice('Connecting to GCS device at port %s' % self.port)
             self.gcs = GCSDevice()
             self.gcs.ConnectRS232(port, self.speed)
         else:
-            self._logger.notice("Already connected to GCS device at port %s" % self.port)
+            self._logger.notice("Already connected to GCS device")
         refdict = self.gcs.qFRF()
         for n in range(self.naxis):
             self.referenced[n] = refdict['%d' % (n + 1,)]
@@ -102,7 +101,7 @@ class PIGCS_Motor(AbstractMotor, Reconnecting):
         return 0
 
     @override
-    def set_velocity(self, axis):
+    def set_velocity(self, axis, velocity_in_steps_per_second):
         raise PIException('Set velocity command is not implemented')
 
     @override
