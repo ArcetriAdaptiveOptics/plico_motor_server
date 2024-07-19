@@ -102,7 +102,7 @@ class IntegrationTest(unittest.TestCase):
              self.CONF_SECTION],
             stdout=serverLog, stderr=serverLog)
         Poller(5).check(MessageInFileProbe(
-            ProcessMonitorRunner.RUNNING_MESSAGE, self.SERVER_LOG_PATH))
+            ProcessMonitorRunner.RUNNING_MESSAGE(), self.SERVER_LOG_PATH))
 
     def _startFakeNewFocus8742(self):
         psh = ProcessStartUpHelper()

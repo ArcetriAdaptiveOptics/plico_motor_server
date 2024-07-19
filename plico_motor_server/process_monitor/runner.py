@@ -1,13 +1,11 @@
 #!/usr/bin/env python
 
 from plico.utils.base_process_monitor_runner import BaseProcessMonitorRunner
-
+from plico_motor_server.utils.constants import Constants
 
 class Runner(BaseProcessMonitorRunner):
 
-    RUNNING_MESSAGE = 'Monitor of plico_motor processes is running'
-    def __init__(self):
-        super().__init__(runner_config_section='processMonitor',
-                         server_config_prefix='motor',
-                         server_process_name='plico_motor_server')
+    @classmethod
+    def server_process_name(cls):
+        return Constants.SERVER_PROCESS_NAME
 
