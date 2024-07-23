@@ -35,6 +35,8 @@ class IntegrationTest(unittest.TestCase):
                             "./tmp/")
     LOG_DIR = os.path.join(TEST_DIR, "log")
     CONF_FILE = 'test/integration/conffiles/plico_motor_server.conf'
+    CONF_FILE_WITH_ERRORS = 'test/integration/conffiles/plico_motor_server_with_errors.conf'
+    CONF_FILE_WITH_DEFAULT_PREFIX = 'test/integration/conffiles/plico_motor_server_default_prefix.conf'
     CALIB_FOLDER = 'test/integration/calib'
     CONF_SECTION = Constants.PROCESS_MONITOR_CONFIG_SECTION
     SERVER_LOG_PATH = os.path.join(LOG_DIR, "%s.log" % CONF_SECTION)
@@ -45,6 +47,7 @@ class IntegrationTest(unittest.TestCase):
     def setUp(self):
         self._setUpBasicLogging()
         self.server = None
+        self.fakenewfocus8742 = None
         self._wasSuccessful = False
 
         self._removeTestFolderIfItExists()
@@ -102,12 +105,14 @@ class IntegrationTest(unittest.TestCase):
         ssc.setConfigFileDestination('$1') # Allow config file to be a script parameter
         ssc.installExecutables()
 
-    def _startProcesses(self):
+    def _startProcesses(self, conffile=None):
+        if conffile is None:
+            conffile = self.CONF_FILE
         psh = ProcessStartUpHelper()
         serverLog = open(os.path.join(self.LOG_DIR, self.SERVER_LOG_PATH), "wb")
         self.server = subprocess.Popen(
             [psh.processProcessMonitorStartUpScriptPath(),
-             self.CONF_FILE,
+             conffile,
              self.CONF_SECTION],
             stdout=serverLog, stderr=serverLog)
         Poller(5).check(MessageInFileProbe(
@@ -235,6 +240,32 @@ class IntegrationTest(unittest.TestCase):
         self._check_backdoor()
         self._test_info()
         self._wasSuccessful = True
+
+    def test_conf_file_with_errors(self):
+        self._createStarterScripts()
+        self._startProcesses(conffile=self.CONF_FILE_WITH_ERRORS)
+        Poller(5).check(MessageInFileProbe(
+            'No sections with prefix', self.SERVER_LOG_PATH))
+        self._wasSuccessful = True
+
+    def test_conf_file_using_default_prefix(self):
+        self._buildClients()
+        self._createStarterScripts()
+        self._startFakeNewFocus8742()
+        self._startProcesses(conffile=self.CONF_FILE_WITH_DEFAULT_PREFIX)
+        self._testProcessesActuallyStarted()
+        self._test_at_boot_is_not_homed()
+        self._test_home_and_get_position()
+        self._test_picomotor_raise_exception_on_home()
+        self._test_move_to()
+        self._test_move_by()
+        self._test_set_velocity()
+        self._test_get_snapshot()
+        self._test_server_info()
+        self._check_backdoor()
+        self._test_info()
+        self._wasSuccessful = True
+
 
 
 if __name__ == "__main__":
