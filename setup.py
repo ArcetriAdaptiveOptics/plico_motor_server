@@ -88,7 +88,7 @@ setup(name=NAME,
       package_data={
           'plico_motor_server': ['conf/plico_motor_server.conf', 'calib/*'],
       },
-      install_requires=["plico>=0.27",
+      install_requires=["plico>=0.30",
                         "plico_motor>=0.0.5",
                         "numpy",
                         "psutil",

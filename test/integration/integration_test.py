@@ -18,8 +18,7 @@ from plico_motor_server.utils.starter_script_creator import \
     StarterScriptCreator
 from plico_motor_server.utils.process_startup_helper import \
     ProcessStartUpHelper
-from plico_motor_server.process_monitor.runner import Runner as \
-    ProcessMonitorRunner
+from plico.utils.process_monitor_runner import RUNNING_MESSAGE as MONITOR_RUNNING_MESSAGE
 from plico_motor.client.motor_client import MotorClient
 from plico_motor.client.snapshot_entry import SnapshotEntry
 from plico_motor_server.controller.runner import Runner
@@ -36,6 +35,8 @@ class IntegrationTest(unittest.TestCase):
                             "./tmp/")
     LOG_DIR = os.path.join(TEST_DIR, "log")
     CONF_FILE = 'test/integration/conffiles/plico_motor_server.conf'
+    CONF_FILE_WITH_ERRORS = 'test/integration/conffiles/plico_motor_server_with_errors.conf'
+    CONF_FILE_WITH_DEFAULT_PREFIX = 'test/integration/conffiles/plico_motor_server_default_prefix.conf'
     CALIB_FOLDER = 'test/integration/calib'
     CONF_SECTION = Constants.PROCESS_MONITOR_CONFIG_SECTION
     SERVER_LOG_PATH = os.path.join(LOG_DIR, "%s.log" % CONF_SECTION)
@@ -46,6 +47,7 @@ class IntegrationTest(unittest.TestCase):
     def setUp(self):
         self._setUpBasicLogging()
         self.server = None
+        self.fakenewfocus8742 = None
         self._wasSuccessful = False
 
         self._removeTestFolderIfItExists()
@@ -53,9 +55,17 @@ class IntegrationTest(unittest.TestCase):
         self.configuration = Configuration()
         self.configuration.load(self.CONF_FILE)
         self.rpc = ZmqRemoteProcedureCall()
+        self._server_config_prefix = self.configuration.getValue(
+                                       Constants.PROCESS_MONITOR_CONFIG_SECTION,
+                                       'server_config_prefix')
 
         calibrationRootDir = self.configuration.calibrationRootDir()
         self._setUpCalibrationTempFolder(calibrationRootDir)
+        self.CONTROLLER_1_LOGFILE = os.path.join(self.LOG_DIR, '%s%d.log' % (self._server_config_prefix, 1))
+        self.CONTROLLER_2_LOGFILE = os.path.join(self.LOG_DIR, '%s%d.log' % (self._server_config_prefix, 2))
+        self.PROCESS_MONITOR_PORT = self.configuration.getValue(
+                                       Constants.PROCESS_MONITOR_CONFIG_SECTION,
+                                       'port', getint=True)
 
     def _setUpBasicLogging(self):
         logging.basicConfig(level=logging.DEBUG)
@@ -76,6 +86,8 @@ class IntegrationTest(unittest.TestCase):
 
     def tearDown(self):
         TestHelper.dumpFileToStdout(self.SERVER_LOG_PATH)
+        TestHelper.dumpFileToStdout(self.CONTROLLER_1_LOGFILE)
+        TestHelper.dumpFileToStdout(self.CONTROLLER_2_LOGFILE)
 
         if self.server is not None:
             TestHelper.terminateSubprocess(self.server)
@@ -93,16 +105,18 @@ class IntegrationTest(unittest.TestCase):
         ssc.setConfigFileDestination('$1') # Allow config file to be a script parameter
         ssc.installExecutables()
 
-    def _startProcesses(self):
+    def _startProcesses(self, conffile=None):
+        if conffile is None:
+            conffile = self.CONF_FILE
         psh = ProcessStartUpHelper()
-        serverLog = open(os.path.join(self.LOG_DIR, "server.out"), "wb")
+        serverLog = open(os.path.join(self.LOG_DIR, self.SERVER_LOG_PATH), "wb")
         self.server = subprocess.Popen(
             [psh.processProcessMonitorStartUpScriptPath(),
-             self.CONF_FILE,
+             conffile,
              self.CONF_SECTION],
             stdout=serverLog, stderr=serverLog)
         Poller(5).check(MessageInFileProbe(
-            ProcessMonitorRunner.RUNNING_MESSAGE, self.SERVER_LOG_PATH))
+            MONITOR_RUNNING_MESSAGE(Constants.SERVER_PROCESS_NAME), self.SERVER_LOG_PATH))
 
     def _startFakeNewFocus8742(self):
         psh = ProcessStartUpHelper()
@@ -117,26 +131,20 @@ class IntegrationTest(unittest.TestCase):
             NewFocus8742ServerProtocol.RUNNING_MESSAGE, logPath))
 
     def _testProcessesActuallyStarted(self):
-        controllerLogFile = os.path.join(
-            self.LOG_DIR,
-            '%s%d.log' % (Constants.SERVER_CONFIG_SECTION_PREFIX, 1))
         Poller(5).check(MessageInFileProbe(
-            Runner.RUNNING_MESSAGE, controllerLogFile))
-        controller2LogFile = os.path.join(
-            self.LOG_DIR,
-            '%s%d.log' % (Constants.SERVER_CONFIG_SECTION_PREFIX, 2))
+            Runner.RUNNING_MESSAGE, self.CONTROLLER_1_LOGFILE))
         Poller(5).check(MessageInFileProbe(
-            Runner.RUNNING_MESSAGE, controller2LogFile))
+            Runner.RUNNING_MESSAGE, self.CONTROLLER_2_LOGFILE))
 
     def _buildClients(self):
         ports1 = ZmqPorts.fromConfiguration(
             self.configuration,
-            '%s%d' % (Constants.SERVER_CONFIG_SECTION_PREFIX, 1))
+            '%s%d' % (self._server_config_prefix, 1))
         self.client1 = MotorClient(
             self.rpc, Sockets(ports1, self.rpc))
         ports2 = ZmqPorts.fromConfiguration(
             self.configuration,
-            '%s%d' % (Constants.SERVER_CONFIG_SECTION_PREFIX, 2))
+            '%s%d' % (self._server_config_prefix, 2))
         self.client2Axis = 2
         self.client2 = MotorClient(
             self.rpc, Sockets(ports2, self.rpc), axis=self.client2Axis)
@@ -232,6 +240,32 @@ class IntegrationTest(unittest.TestCase):
         self._check_backdoor()
         self._test_info()
         self._wasSuccessful = True
+
+    def test_conf_file_with_errors(self):
+        self._createStarterScripts()
+        self._startProcesses(conffile=self.CONF_FILE_WITH_ERRORS)
+        Poller(5).check(MessageInFileProbe(
+            'No sections with prefix', self.SERVER_LOG_PATH))
+        self._wasSuccessful = True
+
+    def test_conf_file_using_default_prefix(self):
+        self._buildClients()
+        self._createStarterScripts()
+        self._startFakeNewFocus8742()
+        self._startProcesses(conffile=self.CONF_FILE_WITH_DEFAULT_PREFIX)
+        self._testProcessesActuallyStarted()
+        self._test_at_boot_is_not_homed()
+        self._test_home_and_get_position()
+        self._test_picomotor_raise_exception_on_home()
+        self._test_move_to()
+        self._test_move_by()
+        self._test_set_velocity()
+        self._test_get_snapshot()
+        self._test_server_info()
+        self._check_backdoor()
+        self._test_info()
+        self._wasSuccessful = True
+
 
 
 if __name__ == "__main__":
