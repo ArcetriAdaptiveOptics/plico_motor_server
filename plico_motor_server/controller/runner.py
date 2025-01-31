@@ -101,12 +101,17 @@ class Runner(BaseRunner):
     def _createPI_E861(self, motorDeviceSection):
         from plico_motor_server.devices.PI_motors import PI_E861
         name = self.configuration.deviceName(motorDeviceSection)
-        serial_or_usb = SerialOrUSBConnection.fromConfiguration(
-                self.configuration,
-                motorDeviceSection)
-        speed = self.configuration.getValue(
-            motorDeviceSection, 'speed', getint=True)
-        self._motor = PI_E861(name, serial_or_usb, speed)
+        try:
+            usb_id_string = self.configuration.getValue(
+                motorDeviceSection, 'usb_id_string')
+            self._motor = PI_E861(name, None, None, usb_id_string=usb_id_string)
+        except KeyError:
+            serial_or_usb = SerialOrUSBConnection.fromConfiguration(
+                    self.configuration,
+                    motorDeviceSection)
+            speed = self.configuration.getValue(
+                motorDeviceSection, 'speed', getint=True)
+            self._motor = PI_E861(name, serial_or_usb, speed)
 
     def _createStandaMotor(self, motorDeviceSection):
         from plico_motor_server.devices.standa_motors import StandaStage

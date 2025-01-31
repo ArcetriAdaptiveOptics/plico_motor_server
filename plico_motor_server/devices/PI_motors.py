@@ -25,10 +25,11 @@ class PIGCS_Motor(AbstractMotor, Reconnecting):
     an instance of this class is initialized.
     '''
 
-    def __init__(self, name, serial_or_usb, speed):
+    def __init__(self, name, serial_or_usb, speed, usb_id_string=None):
         from pipython import GCSDevice # Not used here, but let's fail now instead of later
         self._name = name
         self.serial_or_usb = serial_or_usb
+        self.usb_id_string = usb_id_string
         self.speed = speed
         self.naxis = 1
         self.gcs = None
@@ -46,10 +47,13 @@ class PIGCS_Motor(AbstractMotor, Reconnecting):
     def connect(self):
         if self.gcs is None:
             from pipython import GCSDevice
-            port = self.serial_or_usb.port_name()
-            self._logger.notice('Connecting to GCS device at %s' % port)
             self.gcs = GCSDevice()
-            self.gcs.ConnectRS232(port, self.speed)
+            if self.usb_id_string:
+                self.gcs.ConnectUSB(self.usb_id_string)
+            else:
+                port = self.serial_or_usb.port_name()
+                self._logger.notice('Connecting to GCS device at %s' % port)
+                self.gcs.ConnectRS232(port, self.speed)
         else:
             self._logger.notice("Already connected to GCS device")
         refdict = self.gcs.qFRF()
@@ -142,9 +146,8 @@ class PI_E861(PIGCS_Motor):
     This class sets the "use_servo" flag to True in order
     to enable the servo loop after initialization.
     '''
-
-    def __init__(self, name, port, speed):
-        super().__init__(name, port, speed)
+    def __init__(self, name, port, speed, usb_id_string=None):
+        super().__init__(name, port, speed, usb_id_string=usb_id_string)
         self.use_servo = True
         self.steps_to_PIsteps = 1e-6  # PI E-861 uses mm as its unit
 
