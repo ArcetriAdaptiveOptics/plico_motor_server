@@ -16,6 +16,15 @@ WRITE_WL = "WL=%5.3f\r"
 READ_WL = "WL?\r"
 GET_STATUS = "ST?\r"
 GET_TEMPERATURE = 'TP?\r'
+WRITE_BW = "BW=%d\\r"
+READ_BW = "BW?\\r"
+
+# Bandwidth Modes (from SDK documentation)
+MODE_BLACK = 1
+MODE_WIDE = 2
+MODE_MEDIUM = 4
+MODE_NARROW = 8
+VALID_MODES = {MODE_BLACK, MODE_WIDE, MODE_MEDIUM, MODE_NARROW}
 
 
 class TunableFilterException(Exception):
@@ -52,10 +61,12 @@ class TunableFilter(AbstractMotor, Reconnecting):
         nw0 = 0
         it = 0
         while True:
-            nw = self.ser.inWaiting()
+            if self.ser is None:
+                raise TunableFilterException("Serial connection not available in _pollSerial")
+            nw = self.ser.in_waiting
             it = it + 1
             time.sleep(0.01)
-            if (nw >0) and (nw0==nw) or (it==10000):
+            if (nw > 0) and (nw0 == nw) or (it == 10000):
                 break
             nw0 = nw
         if nw == 0:
@@ -90,10 +101,11 @@ class TunableFilter(AbstractMotor, Reconnecting):
         out = string
             motor model type
         '''
+        assert self.ser is not None # Assure linter connection exists due to @reconnect
         cmd = bytes(GET_ID, 'utf-8')
         tmp = self.ser.write(cmd)
         nw = self._pollSerial()
-        out_b = self.ser.read(self.ser.inWaiting())
+        out_b = self.ser.read(self.ser.in_waiting)
         out_s = out_b.decode('utf-8')
         out = out_s.split('\r')[0]
         return out
@@ -106,10 +118,11 @@ class TunableFilter(AbstractMotor, Reconnecting):
         out: int [nm]
             wavelength output from filter
         '''
+        assert self.ser is not None # Assure linter connection exists due to @reconnect
         cmd = bytes(READ_WL, 'utf-8')
         tmp = self.ser.write(cmd)
         nw = self._pollSerial()
-        out_b = self.ser.read(self.ser.inWaiting())
+        out_b = self.ser.read(self.ser.in_waiting)
         out_s = out_b.decode('utf-8')
         out = out_s.split('\r')[0]
         out_number = float(out.split('=')[1])
@@ -128,12 +141,13 @@ class TunableFilter(AbstractMotor, Reconnecting):
         out: str [nm]
             wavelength output from filter
         '''
+        assert self.ser is not None # Assure linter connection exists due to @reconnect
         if wl < 420 or wl > 730:
             raise TunableFilterException('Wavelength out of range 420-730')
         cmd = bytes(WRITE_WL % wl, 'utf-8')
         tmp = self.ser.write(cmd)
         nw = self._pollSerial()
-        out_b = self.ser.read(self.ser.inWaiting())
+        out_b = self.ser.read(self.ser.in_waiting)
         out_s = out_b.decode('utf-8')
         #out = out_s.split('\r')[0]
         #out = self._get_wl()
@@ -150,10 +164,11 @@ class TunableFilter(AbstractMotor, Reconnecting):
             1 - warm up
             2 - ready
         '''
+        assert self.ser is not None # Assure linter connection exists due to @reconnect
         cmd = bytes(GET_STATUS, 'utf-8')
         tmp = self.ser.write(cmd)
         nw = self._pollSerial()
-        out_b = self.ser.read(self.ser.inWaiting())
+        out_b = self.ser.read(self.ser.in_waiting)
         out_s = out_b.decode('utf-8')
         out = out_s.split()[0]
         return out
@@ -166,13 +181,78 @@ class TunableFilter(AbstractMotor, Reconnecting):
         out: byte
             temperature
         '''
+        assert self.ser is not None # Assure linter connection exists due to @reconnect
         cmd = bytes(GET_TEMPERATURE, 'utf-8')
         tmp = self.ser.write(cmd)
         nw = self._pollSerial()
-        out_b = self.ser.read(self.ser.inWaiting())
+        out_b = self.ser.read(self.ser.in_waiting)
         out_s = out_b.decode('utf-8')
         out = out_s.split()[0]
         return out
+
+    @reconnect
+    @override
+    def get_bandwidth_mode(self) -> int:
+        """
+        Get the current bandwidth mode.
+
+        Returns
+        -------
+        int
+            Current bandwidth mode (1=BLACK, 2=WIDE, 4=MEDIUM, 8=NARROW).
+        """
+        assert self.ser is not None # Assure linter connection exists due to @reconnect
+        self._logger.debug("Getting bandwidth mode")
+        cmd = bytes(READ_BW, 'utf-8')
+        tmp = self.ser.write(cmd)
+        nw = self._pollSerial()
+        out_b = self.ser.read(self.ser.in_waiting)
+        out_s = out_b.decode('utf-8')
+        # Expected response format: BW=<mode>\r...
+        try:
+            mode_str = out_s.split('\r')[0].split('=')[1]
+            mode = int(mode_str)
+            self._logger.debug(f"Current bandwidth mode = {mode}")
+            return mode
+        except (IndexError, ValueError) as e:
+            raise TunableFilterException(f"Could not parse bandwidth mode from response: '{out_s}'. Error: {e}")
+
+    @reconnect
+    @override
+    def set_bandwidth_mode(self, mode: int):
+        """
+        Set the bandwidth mode.
+
+        Parameters
+        ----------
+        mode : int
+            Desired bandwidth mode (1=BLACK, 2=WIDE, 4=MEDIUM, 8=NARROW).
+        
+        Raises
+        ------
+        ValueError
+            If the provided mode is not valid.
+        TunableFilterException
+            If communication fails or mode setting is unsuccessful.
+        """
+        assert self.ser is not None # Assure linter connection exists due to @reconnect
+        if mode not in VALID_MODES:
+            raise ValueError(f"Invalid bandwidth mode {mode}. Valid modes are {VALID_MODES}")
+        
+        self._logger.info(f"Setting bandwidth mode to {mode}")
+        cmd = bytes(WRITE_BW % mode, 'utf-8')
+        tmp = self.ser.write(cmd)
+        nw = self._pollSerial()
+        out_b = self.ser.read(self.ser.in_waiting) 
+        out_s = out_b.decode('utf-8')
+        # Check response? Manual/device might indicate expected response (e.g., echo, OK)
+        # For now, assume success if no exception during write/poll/read
+        self._logger.debug(f"Set bandwidth mode command sent. Response: '{out_s.strip()}'")
+        # Verify by getting? Optional, could slow things down.
+        # current_mode = self.get_bandwidth_mode()
+        # if current_mode != mode:
+        #     raise TunableFilterException(f"Failed to set bandwidth mode to {mode}. Current mode is {current_mode}")
+        return
 
 
 ### Per classe astratta ###

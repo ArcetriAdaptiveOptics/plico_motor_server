@@ -82,6 +82,21 @@ class MotorController(Stepable,
         self._motor.set_velocity(axis, velocity_in_steps_per_second)
         self._logger.notice("set axis %d velocity to %g" % (axis, velocity_in_steps_per_second))
 
+    # --- Tunable Filter specific --- 
+    @logEnterAndExit('Entering get_bandwidth_mode', 'get_bandwidth_mode executed')
+    def get_bandwidth_mode(self):
+        # Axis argument is not used for this device
+        mode = self._motor.get_bandwidth_mode()
+        self._logger.notice(f"Got bandwidth mode {mode}")
+        return mode
+
+    @logEnterAndExit('Entering set_bandwidth_mode', 'set_bandwidth_mode executed')
+    def set_bandwidth_mode(self, mode):
+        # Axis argument is not used for this device
+        self._motor.set_bandwidth_mode(mode)
+        self._logger.notice(f"Set bandwidth mode to {mode}")
+        # Return None implicitly
+
     def _getMotorStatus(self):
         axisStatus = []
         for i in range(self._motor.naxes()):
