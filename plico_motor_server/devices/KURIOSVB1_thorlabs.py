@@ -16,8 +16,8 @@ WRITE_WL = "WL=%5.3f\r"
 READ_WL = "WL?\r"
 GET_STATUS = "ST?\r"
 GET_TEMPERATURE = 'TP?\r'
-WRITE_BW = "BW=%d\\r"
-READ_BW = "BW?\\r"
+WRITE_BW = "BW=%d\r"
+READ_BW = "BW?\r"
 
 # Bandwidth Modes (from SDK documentation)
 MODE_BLACK = 1
@@ -192,7 +192,7 @@ class TunableFilter(AbstractMotor, Reconnecting):
 
     @reconnect
     @override
-    def get_bandwidth_mode(self) -> int:
+    def get_bandwidth_mode(self, axis) -> int:
         """
         Get the current bandwidth mode.
 
@@ -219,12 +219,14 @@ class TunableFilter(AbstractMotor, Reconnecting):
 
     @reconnect
     @override
-    def set_bandwidth_mode(self, mode: int):
+    def set_bandwidth_mode(self, axis, mode: int):
         """
         Set the bandwidth mode.
 
         Parameters
         ----------
+        axis : int
+            Motor axis.
         mode : int
             Desired bandwidth mode (1=BLACK, 2=WIDE, 4=MEDIUM, 8=NARROW).
         
@@ -239,7 +241,7 @@ class TunableFilter(AbstractMotor, Reconnecting):
         if mode not in VALID_MODES:
             raise ValueError(f"Invalid bandwidth mode {mode}. Valid modes are {VALID_MODES}")
         
-        self._logger.info(f"Setting bandwidth mode to {mode}")
+        self._logger.notice(f"Setting bandwidth mode to {mode}")
         cmd = bytes(WRITE_BW % mode, 'utf-8')
         tmp = self.ser.write(cmd)
         nw = self._pollSerial()
