@@ -116,3 +116,11 @@ class AbstractMotor(with_metaclass(abc.ABCMeta, object)):
     def deinitialize(self, axis=1):
         assert False
 
+    # Not an abstract method because devices derive directly from this
+    # class, and most are not using this at all
+    def setParameter(self, name, value):
+        assert False
+
+    def getParameters(self):
+        return {}
+

@@ -94,4 +94,3 @@ class SimulatedMotor(AbstractMotor):
     def last_commanded_position(self, axis):
         assert axis == self._axis
         return self._position_in_steps
-

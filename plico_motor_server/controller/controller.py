@@ -82,6 +82,10 @@ class MotorController(Stepable,
         self._motor.set_velocity(axis, velocity_in_steps_per_second)
         self._logger.notice("set axis %d velocity to %g" % (axis, velocity_in_steps_per_second))
 
+    @logEnterAndExit('Entering setParameter', 'Executed setParameter')
+    def setParameter(self, name, value):
+        self._motor.setParameter(name, value)
+
     def _getMotorStatus(self):
         axisStatus = []
         for i in range(self._motor.naxes()):
@@ -95,7 +99,8 @@ class MotorController(Stepable,
                 self._motor.type(axis),
                 self._motor.is_moving(axis),
                 self._motor.last_commanded_position(axis),
-                axis
+                axis,
+                self._motor.getParameters(),
             )
             axisStatus.append(motorStatus)
             self._logger.debug(

@@ -282,4 +282,15 @@ class TunableFilter(AbstractMotor, Reconnecting):
     def set_velocity(self, axis):
         raise TunableFilterException('Set velocity command is not supported.')
 
-    
+    @override
+    def setParameter(self, name, value):
+        if name == 'bandwidthMode':
+            self.setBandwidthMode(value)
+        else:
+            raise Exception('Parameter %s is not valid' % str(name))
+
+    @override
+    def getParameters(self):
+        return {'bandwidthMode': self.getBandwidthMode(),
+               }
+
