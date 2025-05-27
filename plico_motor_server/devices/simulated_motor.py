@@ -59,6 +59,20 @@ class SimulatedMotor(AbstractMotor):
         assert axis == self._axis
         self._is_moving = False
 
+    @override
+    def get_bandwidth_mode(self, axis):
+        assert axis == self._axis
+        self._logger.notice("Simulated motor: get_bandwidth_mode called")
+        # Return a placeholder or default value
+        return "normal"
+
+    @override
+    def set_bandwidth_mode(self, axis, mode):
+        assert axis == self._axis
+        self._logger.notice(f"Simulated motor: set_bandwidth_mode called with mode {mode}")
+        # In a real simulation, you might store the mode if needed
+        pass
+
     def raise_exception_on_deinitialize(self, trueOrFalse):
         self._raiseExceptionOnDeinitialize = trueOrFalse
 
