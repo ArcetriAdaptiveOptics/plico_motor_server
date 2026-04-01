@@ -118,7 +118,6 @@ class AbstractMotor(with_metaclass(abc.ABCMeta, object)):
 
     # Tunable Filter specific methods (added for KURIOS)
     # Other motors might raise NotImplementedError
-    @abc.abstractmethod
     def get_bandwidth_mode(self):
         '''
         Get the current bandwidth mode (if applicable).
@@ -130,7 +129,6 @@ class AbstractMotor(with_metaclass(abc.ABCMeta, object)):
         '''
         assert False
 
-    @abc.abstractmethod
     def set_bandwidth_mode(self, mode):
         '''
         Set the bandwidth mode (if applicable).
