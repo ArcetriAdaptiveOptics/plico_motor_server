@@ -116,3 +116,29 @@ class AbstractMotor(with_metaclass(abc.ABCMeta, object)):
     def deinitialize(self, axis=1):
         assert False
 
+    # Tunable Filter specific methods (added for KURIOS)
+    # Other motors might raise NotImplementedError
+    @abc.abstractmethod
+    def get_bandwidth_mode(self):
+        '''
+        Get the current bandwidth mode (if applicable).
+
+        Returns
+        -------
+        int
+            The current bandwidth mode identifier.
+        '''
+        assert False
+
+    @abc.abstractmethod
+    def set_bandwidth_mode(self, mode):
+        '''
+        Set the bandwidth mode (if applicable).
+
+        Parameters
+        ----------
+        mode : int
+            The desired bandwidth mode identifier.
+        '''
+        assert False
+
