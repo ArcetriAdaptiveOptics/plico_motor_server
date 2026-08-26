@@ -1,7 +1,9 @@
 '''
 Authors
   - C. Selmi: written in 2022
+  - Cascading bench: FW102C-compatible serial I/O (*idn? optional; wait for '>')
 '''
+import re
 import time
 import serial
 from plico.utils.logger import Logger
@@ -22,12 +24,15 @@ class FilterWheelException(Exception):
 
 class SerialTimeoutException(Exception):
     def __init__(self, value=-1):
-        print ("Missing response from serial after %i iterrations" % value)
+        print("Missing response from serial after %i iterrations" % value)
 
 
 class FilterWheel(AbstractMotor, Reconnecting):
     '''
     Manual: https://www.thorlabs.com/drawings/67124bd78341d22e-A3AF90CF-D9E9-9FC4-63EEF4724CA5DD84/FW102C-Manual.pdf
+
+    Some FW102C firmwares do not implement *idn? (CMD_NOT_DEFINED). Connect
+    verifies the link with pos? and waits for the '>' prompt on every reply.
     '''
     def __init__(self, name, serial_or_usb, speed):
         """The constructor """
@@ -41,42 +46,90 @@ class FilterWheel(AbstractMotor, Reconnecting):
         Reconnecting.__init__(self,
             self.connect,
             self.disconnect,
-            [SerialTimeoutException],
+            [SerialTimeoutException, FilterWheelException],
         )
 
-    def _pollSerial(self):
-        nw = 0
-        nw0 = 0
-        it = 0
-        while True:
-            nw = self.ser.inWaiting()
-            it = it + 1
+    def _flush_input(self):
+        if self.ser is not None:
+            time.sleep(0.05)
+            try:
+                self.ser.reset_input_buffer()
+            except Exception:
+                pass
+
+    def _transact(self, cmd, timeout_s=2.0):
+        '''Write cmd and read until FW prompt ">" or timeout.'''
+        if self.ser is None:
+            raise FilterWheelException('Serial port is not open')
+        self._flush_input()
+        self.ser.write(cmd.encode('utf-8') if isinstance(cmd, str) else cmd)
+        buf = bytearray()
+        deadline = time.time() + timeout_s
+        while time.time() < deadline:
+            n = self.ser.inWaiting()
+            if n:
+                buf.extend(self.ser.read(n))
+                if b'>' in buf:
+                    time.sleep(0.02)
+                    if self.ser.inWaiting():
+                        buf.extend(self.ser.read(self.ser.inWaiting()))
+                    return buf.decode('utf-8', errors='replace')
             time.sleep(0.01)
-            if (nw >0) and (nw0==nw) or (it==10000):
-                break
-            nw0 = nw
-        if nw == 0:
-            raise SerialTimeoutException(it)
-        else:
-            return nw
+        raise SerialTimeoutException()
+
+    @staticmethod
+    def _parse_id(out_s):
+        if 'CMD_NOT_DEFINED' in out_s or 'Command error' in out_s:
+            return 'FW102'
+        parts = [p.strip() for p in re.split(r'[\r\n]+', out_s) if p.strip()]
+        for p in parts:
+            if p.lower().startswith('*idn'):
+                continue
+            if p == '>' or p.lower().startswith('command error'):
+                continue
+            return p
+        return 'FW102'
+
+    @staticmethod
+    def _parse_pos(out_s):
+        # Typical: "pos?\r2\r> "  (echo + position + prompt)
+        if 'CMD_NOT_DEFINED' in out_s or 'Command error' in out_s:
+            raise FilterWheelException('Device error in reply: %r' % out_s)
+        m = re.search(r'pos\?\s*[\r\n]+\s*(\d+)', out_s, flags=re.IGNORECASE)
+        if m:
+            return int(m.group(1))
+        for tok in re.findall(r'\d+', out_s):
+            n = int(tok)
+            if 1 <= n <= 6:
+                return n
+        raise FilterWheelException('Could not parse position response: %r' % out_s)
+
+    def _read_position_raw(self):
+        return self._parse_pos(self._transact(READ_N))
 
     def connect(self):
-        if self.ser is None:
-            time.sleep(1) # Slow down reconnect loops
-            port = self.serial_or_usb.port_name()
-            self._logger.notice('Connecting to filter wheel at %s' % port)
-            self.ser = serial.Serial(port, self.speed,
-                                     bytesize=serial.EIGHTBITS,
-                                     parity=serial.PARITY_NONE,
-                                     stopbits=serial.STOPBITS_ONE)
-            out = self.get_id()
-            return out
-        else:
-            print ("Already connected")
+        if self.ser is not None:
+            return
+        time.sleep(1)  # Slow down reconnect loops
+        port = self.serial_or_usb.port_name()
+        self._logger.notice('Connecting to filter wheel at %s' % port)
+        self.ser = serial.Serial(port, self.speed,
+                                 bytesize=serial.EIGHTBITS,
+                                 parity=serial.PARITY_NONE,
+                                 stopbits=serial.STOPBITS_ONE)
+        time.sleep(0.2)
+        # Use raw I/O here — do not call @reconnect methods from connect()
+        pos = self._read_position_raw()
+        self._logger.notice(
+            'Filter wheel connected at %s, position=%d' % (port, pos))
+        return pos
 
     def disconnect(self):
         if self.ser is not None:
-            self.ser.close()
+            try:
+                self.ser.close()
+            except Exception:
+                pass
             self.ser = None
 
     @reconnect
@@ -87,13 +140,7 @@ class FilterWheel(AbstractMotor, Reconnecting):
         out = string
             motor model type
         '''
-        cmd = bytes(GET_ID, 'utf-8')
-        tmp = self.ser.write(cmd)
-        nw = self._pollSerial()
-        out_b = self.ser.read(self.ser.inWaiting())
-        out_s = out_b.decode('utf-8')
-        out = out_s.split('\r')[1]
-        return out
+        return self._parse_id(self._transact(GET_ID))
 
     @reconnect
     def _get_pos(self):
@@ -103,13 +150,7 @@ class FilterWheel(AbstractMotor, Reconnecting):
         out: int
             number of filter wheel position
         '''
-        cmd = bytes(READ_N, 'utf-8')
-        tmp = self.ser.write(cmd)
-        nw = self._pollSerial()
-        out_b = self.ser.read(self.ser.inWaiting())
-        out_s = out_b.decode('utf-8')
-        out = int(out_s.split()[1])
-        return out
+        return self._read_position_raw()
 
     @reconnect
     def _set_pos(self, n):
@@ -122,53 +163,30 @@ class FilterWheel(AbstractMotor, Reconnecting):
         Returns
         -------
         out: int
-            number of filter wheel position
+            confirmed filter wheel position
         '''
         if n < 1 or n > 6:
             raise FilterWheelException('Position %d is out of range (1-6)' % n)
-        cmd = bytes(WRITE_N % n, 'utf-8')
-        tmp = self.ser.write(cmd)
-        nw = self._pollSerial()
-        out_b = self.ser.read(self.ser.inWaiting())
-        out_s = out_b.decode('utf-8')
-        out = out_s.split()[0]
-        return out
-
+        self._transact(WRITE_N % n)
+        # Wheel motion can take ~1s; confirm final position
+        time.sleep(1.0)
+        return self._read_position_raw()
 
 
 ### Per classe astratta ###
 
     @override
     def name(self):
-        '''
-        Returns
-        -------
-        name: string
-            filter name
-        '''
         return self._name
 
     @override
     def position(self, axis):
-        '''
-        Returns
-        -------
-        curr_pos: int
-            output number position from filter
-        '''
         curr_pos = self._get_pos()
-        self._logger.debug(
-            'Current position = %d nm' % curr_pos)
+        self._logger.debug('Current position = %d' % curr_pos)
         return curr_pos
 
     @override
     def velocity(self, axis):
-        '''
-        Returns
-        -------
-        velocity: float
-            Motor velocity. Since this is not supported, it is always zero.
-        '''
         return 0.0
 
     @override
@@ -181,12 +199,6 @@ class FilterWheel(AbstractMotor, Reconnecting):
 
     @override
     def type(self, axis):
-        '''
-        Returns
-        -------
-        type: string
-             type of motor controller
-        '''
         return MotorStatus.TYPE_ROTARY
 
     @override
@@ -195,28 +207,16 @@ class FilterWheel(AbstractMotor, Reconnecting):
 
     @override
     def last_commanded_position(self, axis):
-        '''
-        Returns
-        ------
-        last commanded position: int
-            last number commanded position
-        '''
         return self._last_commanded_position
 
     @override
     def naxes(self):
-        '''
-        Returns
-        ------
-        naxes: int
-            number of motor axes
-        '''
         return self.naxis
-    
+
     @override
     def home(self, axis):
         raise FilterWheelException('Home command is not supported.')
-    
+
     @override
     def move_to(self, axis, number_of_filter_position):
         position = self._set_pos(number_of_filter_position)
